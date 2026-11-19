@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Order, Expense, Invoice, PaymentRecord, ProductionTask, Vendor, Labour } from '@/types';
+import { Order, Expense, Invoice, PaymentRecord, ProductionTask, Vendor, Labour, Material } from '@/types';
 import {
   BarChart3,
   TrendingUp,
@@ -21,6 +21,10 @@ import {
   Clock,
   ArrowUpRight,
   ShieldAlert,
+  Wallet,
+  Percent,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
 
 export default function AdminReportsPage() {
@@ -31,6 +35,8 @@ export default function AdminReportsPage() {
   const [tasks, setTasks] = useState<ProductionTask[]>([]);
   const [vendors, setVendors] = useState<Vendor[]>([]);
   const [labour, setLabour] = useState<Labour[]>([]);
+  const [materials, setMaterials] = useState<Material[]>([]);
+  const [salaryPayments, setSalaryPayments] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Filters
@@ -38,10 +44,10 @@ export default function AdminReportsPage() {
   const [paymentFilter, setPaymentFilter] = useState<'all' | 'full' | 'advance' | 'none'>('all');
   const [pnlFilter, setPnlFilter] = useState<'all' | 'profit' | 'loss'>('all');
 
-  // Selectable Calendar, Date, Month, Year Filter
+  // Selectable Calendar, Date, Month, Year Filter (Full, Monthly, Yearly)
   const [dateFilterType, setDateFilterType] = useState<
-    'all' | 'this_month' | 'today' | 'specific_date' | 'month_year' | 'custom_range'
-  >('all');
+    'all' | 'full' | 'monthly' | 'yearly' | 'this_month' | 'today' | 'specific_date' | 'month_year' | 'custom_range'
+  >('monthly');
   const [selectedDate, setSelectedDate] = useState<string>('');
   const [selectedMonth, setSelectedMonth] = useState<string>(
     (new Date().getMonth() + 1).toString().padStart(2, '0')
@@ -52,9 +58,54 @@ export default function AdminReportsPage() {
   const [startDate, setStartDate] = useState<string>('');
   const [endDate, setEndDate] = useState<string>('');
 
+  const MONTH_NAMES = [
+    'January', 'February', 'March', 'April', 'May', 'June',
+    'July', 'August', 'September', 'October', 'November', 'December'
+  ];
+
+  const handlePrevMonth = () => {
+    let m = parseInt(selectedMonth, 10);
+    let y = parseInt(selectedYear, 10);
+    if (m === 1) {
+      m = 12;
+      y -= 1;
+    } else {
+      m -= 1;
+    }
+    setSelectedMonth(m.toString().padStart(2, '0'));
+    setSelectedYear(y.toString());
+    setDateFilterType('monthly');
+  };
+
+  const handleNextMonth = () => {
+    let m = parseInt(selectedMonth, 10);
+    let y = parseInt(selectedYear, 10);
+    if (m === 12) {
+      m = 1;
+      y += 1;
+    } else {
+      m += 1;
+    }
+    setSelectedMonth(m.toString().padStart(2, '0'));
+    setSelectedYear(y.toString());
+    setDateFilterType('monthly');
+  };
+
+  const handlePrevYear = () => {
+    const y = parseInt(selectedYear, 10) - 1;
+    setSelectedYear(y.toString());
+    setDateFilterType('yearly');
+  };
+
+  const handleNextYear = () => {
+    const y = parseInt(selectedYear, 10) + 1;
+    setSelectedYear(y.toString());
+    setDateFilterType('yearly');
+  };
+
   const loadData = async () => {
     try {
-      const [oRes, eRes, iRes, pRes, tRes, vRes, lRes] = await Promise.all([
+      const [oRes, eRes, iRes, pRes, tRes, vRes, lRes, mRes, aRes] = await Promise.all([
         fetch('/api/orders'),
         fetch('/api/expenses'),
         fetch('/api/invoices'),
@@ -62,14 +113,20 @@ export default function AdminReportsPage() {
         fetch('/api/production/tasks'),
         fetch('/api/vendors'),
         fetch('/api/labour'),
+        fetch('/api/inventory'),
+        fetch('/api/attendance'),
       ]);
-      const oData = await oRes.json();
-      const eData = await eRes.json();
-      const iData = await iRes.json();
-      const pData = await pRes.json();
-      const tData = await tRes.json();
-      const vData = await vRes.json();
-      const lData = await lRes.json();
+      const [oData, eData, iData, pData, tData, vData, lData, mData, aData] = await Promise.all([
+        oRes.json(),
+        eRes.json(),
+        iRes.json(),
+        pRes.json(),
+        tRes.json(),
+        vRes.json(),
+        lRes.json(),
+        mRes.json(),
+        aRes.json(),
+      ]);
 
       if (oData.success) setOrders(oData.orders);
       if (eData.success) setExpenses(eData.expenses);
@@ -78,6 +135,10 @@ export default function AdminReportsPage() {
       if (tData.success) setTasks(tData.tasks);
       if (vData.success) setVendors(vData.vendors);
       if (lData.success) setLabour(lData.labour);
+      if (mData.success && Array.isArray(mData.materials)) setMaterials(mData.materials);
+      if (aData.success && Array.isArray(aData.allSalaryPayments || aData.salaryPayments)) {
+        setSalaryPayments(aData.allSalaryPayments || aData.salaryPayments);
+      }
     } catch (e) {
       console.error('Failed to load reports data', e);
     } finally {
@@ -239,14 +300,20 @@ export default function AdminReportsPage() {
 
     // Date & Calendar Filtering
     const d = f.orderDate;
-    if (dateFilterType === 'today' && d !== todayStr) return false;
-    if (dateFilterType === 'this_month' && !d.startsWith(currentMonthStr)) return false;
-    if (dateFilterType === 'specific_date' && selectedDate && d !== selectedDate) return false;
-    if (dateFilterType === 'month_year') {
+    if (dateFilterType === 'all' || dateFilterType === 'full') {
+      // All Time: no restriction
+    } else if (dateFilterType === 'today') {
+      if (d !== todayStr) return false;
+    } else if (dateFilterType === 'this_month') {
+      if (!d.startsWith(currentMonthStr)) return false;
+    } else if (dateFilterType === 'specific_date') {
+      if (selectedDate && d !== selectedDate) return false;
+    } else if (dateFilterType === 'month_year' || dateFilterType === 'monthly') {
       if (selectedYear && selectedMonth && !d.startsWith(`${selectedYear}-${selectedMonth}`)) return false;
       if (selectedYear && !selectedMonth && !d.startsWith(selectedYear)) return false;
-    }
-    if (dateFilterType === 'custom_range') {
+    } else if (dateFilterType === 'yearly') {
+      if (selectedYear && !d.startsWith(selectedYear)) return false;
+    } else if (dateFilterType === 'custom_range') {
       if (startDate && d < startDate) return false;
       if (endDate && d > endDate) return false;
     }
@@ -271,6 +338,62 @@ export default function AdminReportsPage() {
   const totalCosts = filteredOrders.reduce((sum, o) => sum + getOrderFinancials(o).totalJobCost, 0);
   const totalNetProfit = totalBilled - totalCosts;
   const overallMargin = totalBilled > 0 ? Math.round((totalNetProfit / totalBilled) * 100) : 0;
+  const profitPercentage = totalBilled > 0 ? (totalNetProfit / totalBilled) * 100 : 0;
+
+  // Filter salary payments & expenses by current period
+  const isDateInCurrentPeriod = (dateStr?: string) => {
+    if (!dateStr) return false;
+    if (dateFilterType === 'all' || dateFilterType === 'full') return true;
+    if (dateFilterType === 'today') return dateStr === todayStr;
+    if (dateFilterType === 'this_month') return dateStr.startsWith(currentMonthStr);
+    if (dateFilterType === 'specific_date') return dateStr === selectedDate;
+    if (dateFilterType === 'month_year' || dateFilterType === 'monthly') {
+      return dateStr.startsWith(`${selectedYear}-${selectedMonth}`);
+    }
+    if (dateFilterType === 'yearly') {
+      return dateStr.startsWith(selectedYear);
+    }
+    if (dateFilterType === 'custom_range') {
+      if (startDate && dateStr < startDate) return false;
+      if (endDate && dateStr > endDate) return false;
+      return true;
+    }
+    return true;
+  };
+
+  // Salary disbursements in period
+  const periodSalaryPayments = salaryPayments.filter((sp) => {
+    const target = sp.month || (sp.paidAt ? sp.paidAt.split('T')[0] : '');
+    return isDateInCurrentPeriod(target);
+  });
+  const periodSalaryAmount = periodSalaryPayments.reduce((s, p) => s + (p.amount || 0), 0);
+
+  // Labour expenses in period
+  const periodLabourExpenses = expenses
+    .filter((e) => e.category === 'Labour Charges' && isDateInCurrentPeriod(e.date))
+    .reduce((s, e) => s + e.amount, 0);
+
+  // Direct Job labour costs from filtered orders
+  const periodJobLabourCost = filteredOrders.reduce((s, o) => s + getOrderFinancials(o).labCost, 0);
+
+  // Total Employee Expense
+  const totalEmployeeExpense = periodSalaryAmount + periodLabourExpenses + periodJobLabourCost;
+
+  // Studio Net Worth Calculation:
+  // Assets = Current Stock Valuation + Customer Receivables + Cash collections
+  const totalStockValuation = materials.reduce((s, m) => s + m.purchasePrice * m.stockQuantity, 0);
+  const totalReceivables = orders
+    .filter((o) => o.orderStatus !== 'Cancelled')
+    .reduce((s, o) => s + getOrderFinancials(o).amountPending, 0);
+  const totalCollections = orders
+    .filter((o) => o.orderStatus !== 'Cancelled')
+    .reduce((s, o) => s + getOrderFinancials(o).amountReceived, 0);
+  const totalVendorLiabilities = vendors.reduce((s, v) => s + (v.outstandingBalance || 0), 0);
+  const totalLabourLiabilities = labour.reduce((s, l) => s + (l.pendingAmount || 0), 0);
+
+  const studioTotalAssets = totalStockValuation + totalCollections + totalReceivables;
+  const studioTotalLiabilities = totalVendorLiabilities + totalLabourLiabilities;
+  const studioNetWorth = studioTotalAssets - studioTotalLiabilities;
 
   const profitableJobsCount = filteredOrders.filter((o) => getOrderFinancials(o).profitOrLoss > 0).length;
   const lossJobsCount = filteredOrders.filter((o) => getOrderFinancials(o).profitOrLoss < 0).length;
@@ -363,7 +486,10 @@ export default function AdminReportsPage() {
     <div className="space-y-4">
       {/* Top Toolbar */}
       <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3">
-        <span className="text-sm font-semibold text-slate-800">Financial Audit & Job Costing</span>
+        <div>
+          <span className="text-sm font-semibold text-slate-800 block">Financial Audit & Job Costing</span>
+          <span className="text-[11px] text-slate-500">Real-time studio revenue, payroll, valuation & profit analytics</span>
+        </div>
         <div className="flex items-center gap-2">
           <button
             onClick={() => window.print()}
@@ -383,7 +509,155 @@ export default function AdminReportsPage() {
       </div>
 
       {/* ========================================================= */}
-      {/* FINANCIAL AUDIT STRIP: BILLED, RECEIVED, PENDING, P&L (ADMINLTE 4) */}
+      {/* PERIOD SELECTOR: MONTHLY / FULL / YEARLY CALENDAR SELECTOR */}
+      {/* ========================================================= */}
+      <div className="bg-white p-3 rounded-lg border border-slate-200 shadow-xs flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-xs font-semibold text-slate-600 mr-1">Time Period:</span>
+          {/* Segmented Period Buttons */}
+          <div className="flex items-center bg-slate-100 p-0.5 rounded-lg border border-slate-200 text-xs">
+            <button
+              type="button"
+              onClick={() => setDateFilterType('monthly')}
+              className={`px-3 py-1.5 rounded-md font-medium transition flex items-center gap-1.5 ${
+                dateFilterType === 'monthly' || dateFilterType === 'month_year'
+                  ? 'bg-white text-blue-700 shadow-xs font-bold'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              <Calendar className="w-3.5 h-3.5" />
+              <span>Monthly</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setDateFilterType('full')}
+              className={`px-3 py-1.5 rounded-md font-medium transition flex items-center gap-1.5 ${
+                dateFilterType === 'full' || dateFilterType === 'all'
+                  ? 'bg-white text-slate-900 shadow-xs font-bold'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              <BarChart3 className="w-3.5 h-3.5" />
+              <span>Full (All Time)</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setDateFilterType('yearly')}
+              className={`px-3 py-1.5 rounded-md font-medium transition flex items-center gap-1.5 ${
+                dateFilterType === 'yearly'
+                  ? 'bg-white text-blue-700 shadow-xs font-bold'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              <Clock className="w-3.5 h-3.5" />
+              <span>Yearly</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Dynamic Calendar Controls based on period */}
+        {(dateFilterType === 'monthly' || dateFilterType === 'month_year') && (
+          <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 px-2.5 py-1 rounded-lg text-xs">
+            <button
+              type="button"
+              onClick={handlePrevMonth}
+              title="Previous Month"
+              className="p-1 hover:bg-slate-200 rounded text-slate-600 transition"
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </button>
+
+            <select
+              value={selectedMonth}
+              onChange={(e) => {
+                setSelectedMonth(e.target.value);
+                setDateFilterType('monthly');
+              }}
+              className="bg-transparent font-bold text-slate-800 text-xs focus:outline-none cursor-pointer py-0.5"
+            >
+              {MONTH_NAMES.map((name, idx) => {
+                const val = (idx + 1).toString().padStart(2, '0');
+                return (
+                  <option key={val} value={val}>
+                    {name}
+                  </option>
+                );
+              })}
+            </select>
+
+            <select
+              value={selectedYear}
+              onChange={(e) => {
+                setSelectedYear(e.target.value);
+                setDateFilterType('monthly');
+              }}
+              className="bg-transparent font-bold text-slate-800 text-xs focus:outline-none cursor-pointer py-0.5"
+            >
+              {[2024, 2025, 2026, 2027, 2028].map((yr) => (
+                <option key={yr} value={yr.toString()}>
+                  {yr}
+                </option>
+              ))}
+            </select>
+
+            <button
+              type="button"
+              onClick={handleNextMonth}
+              title="Next Month"
+              className="p-1 hover:bg-slate-200 rounded text-slate-600 transition"
+            >
+              <ChevronRight className="w-4 h-4" />
+            </button>
+          </div>
+        )}
+
+        {dateFilterType === 'yearly' && (
+          <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 px-2.5 py-1 rounded-lg text-xs">
+            <button
+              type="button"
+              onClick={handlePrevYear}
+              title="Previous Year"
+              className="p-1 hover:bg-slate-200 rounded text-slate-600 transition"
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </button>
+
+            <span className="font-semibold text-slate-500">Year:</span>
+            <select
+              value={selectedYear}
+              onChange={(e) => {
+                setSelectedYear(e.target.value);
+                setDateFilterType('yearly');
+              }}
+              className="bg-transparent font-bold text-slate-800 text-xs focus:outline-none cursor-pointer py-0.5"
+            >
+              {[2024, 2025, 2026, 2027, 2028].map((yr) => (
+                <option key={yr} value={yr.toString()}>
+                  {yr}
+                </option>
+              ))}
+            </select>
+
+            <button
+              type="button"
+              onClick={handleNextYear}
+              title="Next Year"
+              className="p-1 hover:bg-slate-200 rounded text-slate-600 transition"
+            >
+              <ChevronRight className="w-4 h-4" />
+            </button>
+          </div>
+        )}
+
+        {(dateFilterType === 'full' || dateFilterType === 'all') && (
+          <span className="text-xs text-slate-500 font-medium">
+            Showing all-time records across all jobs, expenses & staff payroll
+          </span>
+        )}
+      </div>
+
+      {/* ========================================================= */}
+      {/* FINANCIAL AUDIT STRIP 1: BILLED, RECEIVED, PENDING, COSTS, PROFIT */}
       {/* ========================================================= */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
         {/* Total Billed Revenue */}
@@ -438,7 +712,7 @@ export default function AdminReportsPage() {
           </span>
         </div>
 
-        {/* Net Profit & Margin */}
+        {/* Net Profit */}
         <div className="bg-white p-3.5 rounded-lg border border-slate-200 shadow-xs">
           <span className="text-[11px] font-medium uppercase text-emerald-700 block tracking-wider">
             Net Studio Profit
@@ -449,6 +723,92 @@ export default function AdminReportsPage() {
           <span className="text-[11px] text-emerald-600 font-medium block mt-0.5">
             {overallMargin}% net margin
           </span>
+        </div>
+      </div>
+
+      {/* ========================================================= */}
+      {/* FINANCIAL AUDIT STRIP 2: EMPLOYEE EXPENSE, NET WORTH, PROFIT IN PERCENTAGE */}
+      {/* ========================================================= */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+        {/* Employee Expense */}
+        <div className="bg-white p-3.5 rounded-lg border border-slate-200 shadow-xs flex items-center justify-between">
+          <div>
+            <span className="text-[11px] font-medium uppercase text-indigo-700 block tracking-wider">
+              Employee Expense
+            </span>
+            <div className="text-xl font-bold text-slate-800 mt-1">
+              ₹{totalEmployeeExpense.toLocaleString('en-IN')}
+            </div>
+            <span className="text-[11px] text-slate-400 block mt-0.5">
+              {periodSalaryPayments.length > 0
+                ? `${periodSalaryPayments.length} payroll disbursements (₹${periodSalaryAmount.toLocaleString('en-IN')})`
+                : 'Salaries & operator labour'}
+              {periodJobLabourCost > 0 ? ` + ₹${periodJobLabourCost.toLocaleString('en-IN')} job tasks` : ''}
+            </span>
+          </div>
+          <div className="w-10 h-10 rounded-lg bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600">
+            <UserCheck className="w-5 h-5" />
+          </div>
+        </div>
+
+        {/* Net Worth */}
+        <div className="bg-white p-3.5 rounded-lg border border-slate-200 shadow-xs flex items-center justify-between">
+          <div>
+            <span className="text-[11px] font-medium uppercase text-blue-700 block tracking-wider">
+              Studio Net Worth
+            </span>
+            <div className="text-xl font-bold text-slate-800 mt-1">
+              ₹{studioNetWorth.toLocaleString('en-IN')}
+            </div>
+            <span
+              className="text-[11px] text-slate-400 block mt-0.5"
+              title={`Assets: ₹${studioTotalAssets.toLocaleString('en-IN')} (Stock ₹${totalStockValuation.toLocaleString('en-IN')} + Customer Dues ₹${totalReceivables.toLocaleString('en-IN')} + Collections ₹${totalCollections.toLocaleString('en-IN')}) − Liabilities: ₹${studioTotalLiabilities.toLocaleString('en-IN')} (Vendors ₹${totalVendorLiabilities.toLocaleString('en-IN')} + Staff Dues ₹${totalLabourLiabilities.toLocaleString('en-IN')})`}
+            >
+              Assets ₹{studioTotalAssets.toLocaleString('en-IN')} − Liab. ₹{studioTotalLiabilities.toLocaleString('en-IN')}
+            </span>
+          </div>
+          <div className="w-10 h-10 rounded-lg bg-blue-50 border border-blue-100 flex items-center justify-center text-blue-600">
+            <Building2 className="w-5 h-5" />
+          </div>
+        </div>
+
+        {/* Profit in Percentage */}
+        <div className="bg-white p-3.5 rounded-lg border border-slate-200 shadow-xs flex items-center justify-between">
+          <div>
+            <div className="flex items-center gap-1.5">
+              <span className="text-[11px] font-medium uppercase text-emerald-700 tracking-wider">
+                Profit Margin (%)
+              </span>
+              <span
+                className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
+                  profitPercentage >= 30
+                    ? 'bg-emerald-100 text-emerald-800'
+                    : profitPercentage > 0
+                    ? 'bg-blue-100 text-blue-800'
+                    : profitPercentage === 0
+                    ? 'bg-slate-100 text-slate-700'
+                    : 'bg-rose-100 text-rose-800'
+                }`}
+              >
+                {profitPercentage >= 30
+                  ? 'High Margin'
+                  : profitPercentage > 0
+                  ? 'Profitable'
+                  : profitPercentage === 0
+                  ? 'Break-Even'
+                  : 'Loss Margin'}
+              </span>
+            </div>
+            <div className="text-xl font-bold text-emerald-700 mt-1">
+              {profitPercentage > 0 ? '+' : ''}{profitPercentage.toFixed(1)}%
+            </div>
+            <span className="text-[11px] text-slate-400 block mt-0.5">
+              Profit ₹{totalNetProfit.toLocaleString('en-IN')} on Billed ₹{totalBilled.toLocaleString('en-IN')}
+            </span>
+          </div>
+          <div className="w-10 h-10 rounded-lg bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-600">
+            <Percent className="w-5 h-5" />
+          </div>
         </div>
       </div>
 
