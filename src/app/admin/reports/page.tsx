@@ -361,23 +361,37 @@ export default function AdminReportsPage() {
     return true;
   };
 
-  // Salary disbursements in period
+  // Salary disbursements in period (from attendance payouts)
   const periodSalaryPayments = salaryPayments.filter((sp) => {
     const target = sp.month || (sp.paidAt ? sp.paidAt.split('T')[0] : '');
     return isDateInCurrentPeriod(target);
   });
   const periodSalaryAmount = periodSalaryPayments.reduce((s, p) => s + (p.amount || 0), 0);
 
-  // Labour expenses in period
-  const periodLabourExpenses = expenses
-    .filter((e) => e.category === 'Labour Charges' && isDateInCurrentPeriod(e.date))
+  // Standalone labour expenses not already recorded as attendance salary payments (prevents double counting)
+  const standaloneLabourExpenses = expenses
+    .filter((e) => {
+      if (e.category !== 'Labour Charges') return false;
+      if (!isDateInCurrentPeriod(e.date)) return false;
+      const matchesSalary = periodSalaryPayments.some(
+        (sp) =>
+          sp.id === e.id ||
+          e.id.includes(sp.id) ||
+          (e.labourId === sp.labourId && (e.description?.includes(sp.month) || e.notes?.includes(sp.month)))
+      );
+      return !matchesSalary;
+    })
     .reduce((s, e) => s + e.amount, 0);
 
   // Direct Job labour costs from filtered orders
   const periodJobLabourCost = filteredOrders.reduce((s, o) => s + getOrderFinancials(o).labCost, 0);
 
-  // Total Employee Expense
-  const totalEmployeeExpense = periodSalaryAmount + periodLabourExpenses + periodJobLabourCost;
+  // Total Employee Expense (Staff salary payouts + standalone labour expenses)
+  const totalEmployeeExpense = periodSalaryAmount > 0
+    ? periodSalaryAmount + standaloneLabourExpenses
+    : expenses
+        .filter((e) => e.category === 'Labour Charges' && isDateInCurrentPeriod(e.date))
+        .reduce((s, e) => s + e.amount, 0) + periodJobLabourCost;
 
   // Studio Net Worth Calculation:
   // Assets = Current Stock Valuation + Customer Receivables + Cash collections
