@@ -407,7 +407,7 @@ export interface BusinessSettings {
   accountNumber?: string;
   ifscCode?: string;
   upiId?: string;
-  defaultDeliveryCharge: number;
+  defaultDeliveryCharge?: number;
   freeDeliveryThreshold?: number;
   whatsappTemplates: {
     orderConfirmation: string;

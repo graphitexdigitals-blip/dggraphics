@@ -353,8 +353,8 @@ export const initialBusinessSettings: BusinessSettings = {
   accountNumber: '50200012345678',
   ifscCode: 'HDFC0001234',
   upiId: 'dpgraphics@upi',
-  defaultDeliveryCharge: 100,
-  freeDeliveryThreshold: 2500,
+  defaultDeliveryCharge: 0,
+  freeDeliveryThreshold: 0,
   whatsappTemplates: {
     orderConfirmation: 'Hello {{name}}, thank you for your order with DG graphics! Your Job Number is {{jobNumber}}. Total amount: ₹{{total}}. Payment is offline upon shop collection or delivery. Track your order at https://dggraphics.com/track?job={{jobNumber}}',
     readyForCollection: 'Hello {{name}}, your print job {{jobNumber}} ({{product}}) is READY FOR COLLECTION at our shop! Balance due: ₹{{balance}}. You can pay cash or UPI when picking up. Visit us between 9:30 AM to 8:30 PM.',

@@ -407,7 +407,7 @@ function AdminBillingContent() {
           specialInstructions: editSpecialInstructions.trim(),
           subtotal: Number(editSubtotal) || 0,
           designCharges: Number(editDesignCharges) || 0,
-          deliveryCharges: Number(editDeliveryCharges) || 0,
+          deliveryCharges: 0,
           discount: Number(editDiscount) || 0,
           grandTotal: Number(editGrandTotal) || 0,
           amountPaid: Number(editAmountPaid) || 0,
@@ -1342,7 +1342,7 @@ function AdminBillingContent() {
                     <button
                       type="button"
                       onClick={() => {
-                        const rec = Math.max(0, editSubtotal + editDesignCharges + editDeliveryCharges - editDiscount);
+                        const rec = Math.max(0, editSubtotal + editDesignCharges - editDiscount);
                         setEditGrandTotal(rec);
                       }}
                       className="text-[11px] font-bold text-dp-orange hover:underline flex items-center gap-1"
@@ -1351,7 +1351,7 @@ function AdminBillingContent() {
                       <span>Auto-Calculate Total</span>
                     </button>
                   </div>
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                     <div>
                       <label className="block text-[11px] font-bold text-slate-700 mb-1">
                         Subtotal (₹)
@@ -1364,7 +1364,7 @@ function AdminBillingContent() {
                           const val = parseFloat(e.target.value) || 0;
                           setEditSubtotal(val);
                           if (autoCalculateTotal) {
-                            setEditGrandTotal(Math.max(0, val + editDesignCharges + editDeliveryCharges - editDiscount));
+                            setEditGrandTotal(Math.max(0, val + editDesignCharges - editDiscount));
                           }
                         }}
                         className="w-full px-3 py-2 border border-slate-200 rounded-xl focus:outline-none focus:border-dp-navy font-bold bg-white"
@@ -1382,25 +1382,7 @@ function AdminBillingContent() {
                           const val = parseFloat(e.target.value) || 0;
                           setEditDesignCharges(val);
                           if (autoCalculateTotal) {
-                            setEditGrandTotal(Math.max(0, editSubtotal + val + editDeliveryCharges - editDiscount));
-                          }
-                        }}
-                        className="w-full px-3 py-2 border border-slate-200 rounded-xl focus:outline-none focus:border-dp-navy font-bold bg-white"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-[11px] font-bold text-slate-700 mb-1">
-                        Delivery/Extra (₹)
-                      </label>
-                      <input
-                        type="number"
-                        min="0"
-                        value={editDeliveryCharges}
-                        onChange={(e) => {
-                          const val = parseFloat(e.target.value) || 0;
-                          setEditDeliveryCharges(val);
-                          if (autoCalculateTotal) {
-                            setEditGrandTotal(Math.max(0, editSubtotal + editDesignCharges + val - editDiscount));
+                            setEditGrandTotal(Math.max(0, editSubtotal + val - editDiscount));
                           }
                         }}
                         className="w-full px-3 py-2 border border-slate-200 rounded-xl focus:outline-none focus:border-dp-navy font-bold bg-white"
@@ -1418,7 +1400,7 @@ function AdminBillingContent() {
                           const val = parseFloat(e.target.value) || 0;
                           setEditDiscount(val);
                           if (autoCalculateTotal) {
-                            setEditGrandTotal(Math.max(0, editSubtotal + editDesignCharges + editDeliveryCharges - val));
+                            setEditGrandTotal(Math.max(0, editSubtotal + editDesignCharges - val));
                           }
                         }}
                         className="w-full px-3 py-2 border border-slate-200 rounded-xl focus:outline-none focus:border-dp-navy font-bold bg-white text-rose-600"

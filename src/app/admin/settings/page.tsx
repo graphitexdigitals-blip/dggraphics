@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { BusinessSettings } from '@/types';
-import { Settings, Save, CheckCircle2, MessageSquare, Building, CreditCard, Truck } from 'lucide-react';
+import { Settings, Save, CheckCircle2, MessageSquare, Building, CreditCard } from 'lucide-react';
 
 export default function AdminSettingsPage() {
   const [settings, setSettings] = useState<BusinessSettings | null>(null);
@@ -168,34 +168,6 @@ export default function AdminSettingsPage() {
           </div>
         </div>
 
-        {/* Delivery Settings */}
-        <div className="bg-white p-4 sm:p-5 rounded-xl border border-slate-200 shadow-xs space-y-3">
-          <h3 className="font-extrabold text-xs text-slate-900 uppercase tracking-wider flex items-center gap-2 pb-2 border-b border-slate-100">
-            <Truck className="w-4 h-4 text-dp-orange" />
-            <span>Delivery & Courier Charges</span>
-          </h3>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
-            <div>
-              <label className="block font-bold text-slate-700 uppercase mb-1">Flat Delivery Fee (₹)</label>
-              <input
-                type="number"
-                value={settings.defaultDeliveryCharge}
-                onChange={(e) => setSettings({ ...settings, defaultDeliveryCharge: parseFloat(e.target.value) || 0 })}
-                className="w-full px-3 py-2 border border-slate-200 rounded-lg font-bold"
-              />
-            </div>
-            <div>
-              <label className="block font-bold text-slate-700 uppercase mb-1">Free Delivery Threshold (₹)</label>
-              <input
-                type="number"
-                value={settings.freeDeliveryThreshold || 0}
-                onChange={(e) => setSettings({ ...settings, freeDeliveryThreshold: parseFloat(e.target.value) || 0 })}
-                className="w-full px-3 py-2 border border-slate-200 rounded-lg font-bold"
-              />
-            </div>
-          </div>
-        </div>
 
         {/* Ready For Collection WhatsApp Template (Section 25) */}
         <div className="bg-white p-4 sm:p-5 rounded-xl border border-slate-200 shadow-xs space-y-3">
