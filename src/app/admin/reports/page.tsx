@@ -403,7 +403,39 @@ export default function AdminReportsPage() {
     .filter((o) => o.orderStatus !== 'Cancelled')
     .reduce((s, o) => s + getOrderFinancials(o).amountReceived, 0);
   const totalVendorLiabilities = vendors.reduce((s, v) => s + (v.outstandingBalance || 0), 0);
-  const totalLabourLiabilities = labour.reduce((s, l) => s + (l.pendingAmount || 0), 0);
+
+  // Unpaid staff salary liabilities (past months or pending salary disbursements)
+  let unpaidSalaryLiabilities = 0;
+  const todayDateStr = new Date().toISOString().split('T')[0];
+  const curMonthKey = todayDateStr.substring(0, 7);
+
+  labour.forEach((emp) => {
+    if (!emp.startDate) return;
+    const [startYr, startMo] = emp.startDate.split('-').map(Number);
+    const [curYr, curMo] = curMonthKey.split('-').map(Number);
+    let y = startYr;
+    let m = startMo;
+    while (y < curYr || (y === curYr && m <= curMo)) {
+      const monthKey = `${y}-${String(m).padStart(2, '0')}`;
+      const pRec = salaryPayments.find((sp) => sp.labourId === emp.id && sp.month === monthKey);
+      if (pRec) {
+        if (pRec.status === 'Pending') {
+          unpaidSalaryLiabilities += pRec.amount || emp.defaultRate;
+        }
+      } else {
+        if (monthKey < curMonthKey) {
+          unpaidSalaryLiabilities += emp.defaultRate;
+        }
+      }
+      m++;
+      if (m > 12) {
+        m = 1;
+        y++;
+      }
+    }
+  });
+
+  const totalLabourLiabilities = labour.reduce((s, l) => s + (l.pendingAmount || 0), 0) + unpaidSalaryLiabilities;
   const totalPendingExpenseLiabilities = expenses
     .filter((e) => e.paymentStatus === 'Pending' || e.paymentStatus === 'Unpaid')
     .reduce((s, e) => s + e.amount, 0);

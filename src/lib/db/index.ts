@@ -1122,7 +1122,40 @@ export const db = {
 
     const totalExpenses = expenses.reduce((sum, e) => sum + e.amount, 0);
     const vendorOutstanding = vendors.reduce((sum, v) => sum + v.outstandingBalance, 0);
-    const labourOutstanding = labour.reduce((sum, l) => sum + l.pendingAmount, 0);
+
+    // Unpaid monthly staff salaries / wages (e.g. past months or pending months)
+    let unpaidSalaryLiabilities = 0;
+    const todayDateStr = new Date().toISOString().split('T')[0];
+    const curMonthKey = todayDateStr.substring(0, 7);
+    const salaryPayments = data.salaryPayments || [];
+
+    labour.forEach((emp) => {
+      if (!emp.startDate) return;
+      const [startYr, startMo] = emp.startDate.split('-').map(Number);
+      const [curYr, curMo] = curMonthKey.split('-').map(Number);
+      let y = startYr;
+      let m = startMo;
+      while (y < curYr || (y === curYr && m <= curMo)) {
+        const monthKey = `${y}-${String(m).padStart(2, '0')}`;
+        const pRec = salaryPayments.find((sp) => sp.labourId === emp.id && sp.month === monthKey);
+        if (pRec) {
+          if (pRec.status === 'Pending') {
+            unpaidSalaryLiabilities += pRec.amount || emp.defaultRate;
+          }
+        } else {
+          if (monthKey < curMonthKey) {
+            unpaidSalaryLiabilities += emp.defaultRate;
+          }
+        }
+        m++;
+        if (m > 12) {
+          m = 1;
+          y++;
+        }
+      }
+    });
+
+    const labourOutstanding = labour.reduce((sum, l) => sum + l.pendingAmount, 0) + unpaidSalaryLiabilities;
     const pendingExpenses = expenses
       .filter((e) => e.paymentStatus === 'Pending' || e.paymentStatus === 'Unpaid')
       .reduce((sum, e) => sum + e.amount, 0);

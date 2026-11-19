@@ -1951,9 +1951,16 @@ export default function AttendancePage() {
 
                     <div className="pt-2 border-t border-slate-200/80 text-[11px] space-y-0.5 text-slate-700">
                       <div className="flex flex-wrap items-center justify-between gap-1">
-                        <span className="text-slate-500 font-medium">Dates Paid & Covered:</span>
+                        <span className="text-slate-500 font-medium">
+                          {isMonthPaid ? 'Dates Paid & Covered:' : 'Dates Covered (Liability):'}
+                        </span>
                         <strong className="text-slate-900">
-                          1st to {Math.min(daysInMonth, new Date().getDate())} {monthNames[monthNum - 1]} ({calStats.payableDays} days)
+                          1st to{' '}
+                          {selectedYear === String(new Date().getFullYear()) &&
+                          selectedMonth === String(new Date().getMonth() + 1).padStart(2, '0')
+                            ? Math.min(daysInMonth, new Date().getDate())
+                            : daysInMonth}{' '}
+                          {monthNames[monthNum - 1]} ({calStats.payableDays} days)
                         </strong>
                       </div>
                       {isMonthPaid ? (
@@ -1965,8 +1972,10 @@ export default function AttendancePage() {
                         </div>
                       ) : (
                         <div className="flex flex-wrap items-center justify-between gap-1">
-                          <span className="text-slate-500 font-medium">Status:</span>
-                          <span className="text-amber-800 font-bold">Unpaid till today</span>
+                          <span className="text-slate-500 font-medium">Financial Status:</span>
+                          <span className="text-amber-900 font-bold bg-amber-100 border border-amber-300 px-1.5 py-0.2 rounded text-[10px]">
+                            ⚠️ Unpaid Liability (Salary Due)
+                          </span>
                         </div>
                       )}
                     </div>
