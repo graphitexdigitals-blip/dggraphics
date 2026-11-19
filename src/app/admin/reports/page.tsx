@@ -741,9 +741,9 @@ export default function AdminReportsPage() {
       </div>
 
       {/* ========================================================= */}
-      {/* FINANCIAL AUDIT STRIP 2: EMPLOYEE EXPENSE, NET WORTH, PROFIT IN PERCENTAGE */}
+      {/* FINANCIAL AUDIT STRIP 2: EMPLOYEE EXPENSE, NET WORTH, NET PROFIT, PROFIT % */}
       {/* ========================================================= */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
         {/* Employee Expense */}
         <div className="bg-white p-3.5 rounded-lg border border-slate-200 shadow-xs flex items-center justify-between">
           <div>
@@ -786,7 +786,38 @@ export default function AdminReportsPage() {
           </div>
         </div>
 
-        {/* Profit in Percentage */}
+        {/* Net Profit (Rupees) */}
+        <div className="bg-white p-3.5 rounded-lg border border-slate-200 shadow-xs flex items-center justify-between">
+          <div>
+            <div className="flex items-center gap-1.5">
+              <span className="text-[11px] font-medium uppercase text-emerald-700 tracking-wider">
+                Net Profit
+              </span>
+              <span
+                className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
+                  totalNetProfit > 0
+                    ? 'bg-emerald-100 text-emerald-800'
+                    : totalNetProfit === 0
+                    ? 'bg-slate-100 text-slate-700'
+                    : 'bg-rose-100 text-rose-800'
+                }`}
+              >
+                {totalNetProfit > 0 ? 'Profit' : totalNetProfit === 0 ? 'Break-Even' : 'Loss'}
+              </span>
+            </div>
+            <div className="text-xl font-bold text-emerald-700 mt-1">
+              ₹{totalNetProfit.toLocaleString('en-IN')}
+            </div>
+            <span className="text-[11px] text-slate-400 block mt-0.5">
+              Billed ₹{totalBilled.toLocaleString('en-IN')} − Direct Costs ₹{totalCosts.toLocaleString('en-IN')}
+            </span>
+          </div>
+          <div className="w-10 h-10 rounded-lg bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-600">
+            <DollarSign className="w-5 h-5" />
+          </div>
+        </div>
+
+        {/* Profit Margin in Percentage */}
         <div className="bg-white p-3.5 rounded-lg border border-slate-200 shadow-xs flex items-center justify-between">
           <div>
             <div className="flex items-center gap-1.5">
@@ -817,7 +848,7 @@ export default function AdminReportsPage() {
               {profitPercentage > 0 ? '+' : ''}{profitPercentage.toFixed(1)}%
             </div>
             <span className="text-[11px] text-slate-400 block mt-0.5">
-              Profit ₹{totalNetProfit.toLocaleString('en-IN')} on Billed ₹{totalBilled.toLocaleString('en-IN')}
+              Margin on Billed Revenue
             </span>
           </div>
           <div className="w-10 h-10 rounded-lg bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-600">
