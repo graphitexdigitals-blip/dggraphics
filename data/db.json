@@ -504,7 +504,52 @@
   "expenses": [],
   "enquiries": [],
   "designRevisions": [],
-  "attendances": [],
+  "attendances": [
+    {
+      "id": "att-emp-1795097201466-2026-11-01",
+      "labourId": "emp-1795097201466",
+      "labourName": "racchu",
+      "employmentType": "permanent",
+      "date": "2026-11-01",
+      "status": "full_day",
+      "workNotes": "",
+      "wageCalculated": 577,
+      "createdAt": "2026-11-19T14:29:43.558Z"
+    },
+    {
+      "id": "att-emp-1795097201466-2026-11-11",
+      "labourId": "emp-1795097201466",
+      "labourName": "racchu",
+      "employmentType": "permanent",
+      "date": "2026-11-11",
+      "status": "absent",
+      "workNotes": "",
+      "wageCalculated": 0,
+      "createdAt": "2026-11-19T14:32:14.993Z"
+    },
+    {
+      "id": "att-emp-1795097201466-2026-10-01",
+      "labourId": "emp-1795097201466",
+      "labourName": "racchu",
+      "employmentType": "permanent",
+      "date": "2026-10-01",
+      "status": "full_day",
+      "workNotes": "",
+      "wageCalculated": 577,
+      "createdAt": "2026-11-19T14:33:54.973Z"
+    },
+    {
+      "id": "att-emp-1795097201466-2026-09-01",
+      "labourId": "emp-1795097201466",
+      "labourName": "racchu",
+      "employmentType": "permanent",
+      "date": "2026-09-01",
+      "status": "full_day",
+      "workNotes": "",
+      "wageCalculated": 577,
+      "createdAt": "2026-11-19T14:34:42.157Z"
+    }
+  ],
   "salaryPayments": [],
   "settings": {
     "businessName": "DG graphics",

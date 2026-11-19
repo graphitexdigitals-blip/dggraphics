@@ -188,10 +188,15 @@ export default function AttendancePage() {
     }));
   };
 
-  // Mark all Full Day
+  // Mark all Full Day (only for employees employed on selectedDate)
   const handleMarkAllFullDay = () => {
-    const updated: Record<string, { status: AttendanceStatus; notes: string }> = {};
-    employees.forEach((emp) => {
+    const active = employees.filter((e) => !e.startDate || e.startDate <= selectedDate);
+    if (active.length === 0) {
+      alert(`Error: Cannot mark attendance for ${selectedDate}. Employee(s) have not joined on or before this date.`);
+      return;
+    }
+    const updated = { ...dailyStatuses };
+    active.forEach((emp) => {
       updated[emp.id] = {
         status: 'full_day',
         notes: dailyStatuses[emp.id]?.notes || '',
@@ -202,9 +207,14 @@ export default function AttendancePage() {
 
   // Save all daily attendances
   const handleSaveDailyAttendance = async () => {
+    const active = employees.filter((e) => !e.startDate || e.startDate <= selectedDate);
+    if (active.length === 0) {
+      alert(`Error: Selected date (${selectedDate}) is before employee joining date. Cannot mark or save attendance prior to joining.`);
+      return;
+    }
     setSavingDaily(true);
     try {
-      const recordsToSave: AttendanceRecord[] = employees.map((emp) => {
+      const recordsToSave: AttendanceRecord[] = active.map((emp) => {
         const current = dailyStatuses[emp.id] || { status: 'full_day', notes: '' };
         const isPerm = emp.paymentType === 'fixed_salary';
         let dayWage = 0;
@@ -378,24 +388,41 @@ export default function AttendancePage() {
     }
   };
 
+  // Helper to check if an employee was employed on a given date (YYYY-MM-DD)
+  const isEmployedOnDate = (emp: Labour, dateStr: string) => {
+    if (!emp.startDate) return true;
+    return emp.startDate <= dateStr;
+  };
+
   // Helper calculations for Daily Sheet
   const dailyRecordsForSelectedDate = attendances.filter((a) => a.date === selectedDate);
-  const fullDayCount = employees.filter(
+  const activeEmployeesOnDate = employees.filter((e) => isEmployedOnDate(e, selectedDate));
+  const unjoinedEmployeesOnDate = employees.filter((e) => !isEmployedOnDate(e, selectedDate));
+  const isSelectedDateBeforeAnyJoining = unjoinedEmployeesOnDate.length > 0;
+
+  const fullDayCount = activeEmployeesOnDate.filter(
     (e) => (dailyStatuses[e.id]?.status || 'full_day') === 'full_day'
   ).length;
-  const halfDayCount = employees.filter(
+  const halfDayCount = activeEmployeesOnDate.filter(
     (e) => dailyStatuses[e.id]?.status === 'half_day'
   ).length;
-  const absentCount = employees.filter(
+  const absentCount = activeEmployeesOnDate.filter(
     (e) => dailyStatuses[e.id]?.status === 'absent'
   ).length;
-  const holidayCount = employees.filter(
+  const holidayCount = activeEmployeesOnDate.filter(
     (e) => dailyStatuses[e.id]?.status === 'holiday'
   ).length;
 
   // Monthly calculations
   const monthPrefix = `${selectedYear}-${selectedMonth}`;
   const monthlyRecords = attendances.filter((a) => a.date.startsWith(monthPrefix));
+  const isMonthBeforeJoining = (emp: Labour, prefix: string) => {
+    if (!emp.startDate) return false;
+    const [targetYear, targetMonthNum] = prefix.split('-').map(Number);
+    const [startYear, startMonthNum] = emp.startDate.split('-').map(Number);
+    return targetYear < startYear || (targetYear === startYear && targetMonthNum < startMonthNum);
+  };
+  const unjoinedEmployeesInMonth = employees.filter((e) => isMonthBeforeJoining(e, monthPrefix));
 
   const getMonthlyStatsForEmployee = (emp: Labour, customPrefix?: string) => {
     const prefix = customPrefix || monthPrefix;
@@ -571,8 +598,12 @@ export default function AttendancePage() {
                 <ChevronLeft className="w-4 h-4" />
               </button>
 
-              <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-lg font-bold text-xs text-slate-800">
-                <Calendar className="w-4 h-4 text-dp-orange" />
+              <div className={`flex items-center gap-2 border px-3 py-1.5 rounded-lg font-bold text-xs ${
+                isSelectedDateBeforeAnyJoining
+                  ? 'bg-rose-50 border-rose-300 text-rose-800'
+                  : 'bg-slate-50 border-slate-200 text-slate-800'
+              }`}>
+                <Calendar className={`w-4 h-4 ${isSelectedDateBeforeAnyJoining ? 'text-rose-600' : 'text-dp-orange'}`} />
                 <input
                   type="date"
                   value={selectedDate}
@@ -580,6 +611,13 @@ export default function AttendancePage() {
                   className="bg-transparent font-mono text-xs focus:outline-none cursor-pointer"
                 />
               </div>
+
+              {isSelectedDateBeforeAnyJoining && (
+                <span className="px-2.5 py-1 rounded-md text-[11px] font-bold bg-rose-100 text-rose-700 border border-rose-200 flex items-center gap-1">
+                  <AlertCircle className="w-3.5 h-3.5 text-rose-600" />
+                  <span>Before Joining Date</span>
+                </span>
+              )}
 
               <button
                 type="button"
@@ -634,6 +672,26 @@ export default function AttendancePage() {
             <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 px-4 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 animate-fadeIn">
               <CheckCircle2 className="w-4 h-4 text-emerald-600" />
               <span>Attendance for {selectedDate} has been saved successfully!</span>
+            </div>
+          )}
+
+          {/* Error Banner when selected date is before employee joining date */}
+          {isSelectedDateBeforeAnyJoining && (
+            <div className="bg-rose-50 border-2 border-rose-300 text-rose-900 p-4 rounded-xl text-xs flex items-start gap-3 shadow-xs animate-fadeIn">
+              <AlertCircle className="w-5 h-5 text-rose-600 shrink-0 mt-0.5" />
+              <div className="space-y-1">
+                <span className="font-extrabold text-sm block text-rose-950">
+                  ⚠️ Error: Selected Date ({selectedDate}) is Prior to Employee Joining Date
+                </span>
+                <p className="text-rose-800 font-medium">
+                  {unjoinedEmployeesOnDate.map((u) => (
+                    <span key={u.id} className="block">
+                      • <strong>{u.name}</strong> official joining date is <strong>{u.startDate}</strong>.
+                    </span>
+                  ))}
+                  Attendance, wages, and work records cannot be searched, marked, or saved for dates before the employee joining date.
+                </p>
+              </div>
             </div>
           )}
 
@@ -695,23 +753,41 @@ export default function AttendancePage() {
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                   {employees.map((emp) => {
+                    const isEmployed = isEmployedOnDate(emp, selectedDate);
                     const current = dailyStatuses[emp.id] || { status: 'full_day', notes: '' };
                     const isPerm = emp.paymentType === 'fixed_salary';
                     let dayEarned = 0;
-                    if (!isPerm) {
-                      if (current.status === 'full_day') dayEarned = emp.defaultRate;
-                      else if (current.status === 'half_day') dayEarned = Math.round(emp.defaultRate * 0.5);
-                    } else {
-                      if (current.status === 'full_day') dayEarned = Math.round(emp.defaultRate / 26);
-                      else if (current.status === 'half_day') dayEarned = Math.round((emp.defaultRate / 26) * 0.5);
+                    if (isEmployed) {
+                      if (!isPerm) {
+                        if (current.status === 'full_day') dayEarned = emp.defaultRate;
+                        else if (current.status === 'half_day') dayEarned = Math.round(emp.defaultRate * 0.5);
+                      } else {
+                        if (current.status === 'full_day') dayEarned = Math.round(emp.defaultRate / 26);
+                        else if (current.status === 'half_day') dayEarned = Math.round((emp.defaultRate / 26) * 0.5);
+                      }
                     }
 
                     return (
-                      <tr key={emp.id} className="hover:bg-slate-50/80 transition">
+                      <tr key={emp.id} className={`transition ${!isEmployed ? 'bg-rose-50/40' : 'hover:bg-slate-50/80'}`}>
                         {/* Employee Name & Role */}
                         <td className="py-3.5 px-4 whitespace-nowrap">
-                          <div className="font-bold text-slate-900 text-xs">{emp.name}</div>
+                          <div className="flex items-center gap-1.5">
+                            <span className="font-bold text-slate-900 text-xs">{emp.name}</span>
+                            <button
+                              type="button"
+                              onClick={() => openEditEmployee(emp)}
+                              className="text-slate-400 hover:text-blue-600 transition"
+                              title="Edit employee & joining date"
+                            >
+                              <Edit2 className="w-3 h-3" />
+                            </button>
+                          </div>
                           <div className="text-[10px] text-slate-400 font-semibold">{emp.workType}</div>
+                          {emp.startDate && (
+                            <div className={`text-[10px] font-semibold mt-0.5 ${!isEmployed ? 'text-rose-600 font-bold' : 'text-slate-500'}`}>
+                              Joining Date: {emp.startDate} {!isEmployed && '(Not Joined Yet)'}
+                            </div>
+                          )}
                           <div className="text-[10px] text-slate-400 flex items-center gap-1 mt-0.5">
                             <Phone className="w-3 h-3 text-slate-400" />
                             <span>{emp.phone}</span>
@@ -745,75 +821,99 @@ export default function AttendancePage() {
 
                         {/* Attendance Status Buttons */}
                         <td className="py-3.5 px-4 whitespace-nowrap">
-                          <div className="inline-flex rounded-xl p-1 bg-slate-100 gap-1 border border-slate-200">
-                            {/* Full Day */}
-                            <button
-                              type="button"
-                              onClick={() => handleSetStatus(emp.id, 'full_day')}
-                              className={`px-2.5 py-1 rounded-lg text-xs font-bold transition flex items-center gap-1 ${
-                                current.status === 'full_day'
-                                  ? 'bg-emerald-600 text-white shadow-xs'
-                                  : 'text-slate-600 hover:text-slate-900'
-                              }`}
-                            >
-                              <span>Full Day</span>
-                            </button>
+                          {!isEmployed ? (
+                            <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-rose-50 border border-rose-300 text-rose-800 font-bold text-xs">
+                              <XCircle className="w-4 h-4 text-rose-600 shrink-0" />
+                              <span>Error: Before Joining Date ({emp.startDate})</span>
+                            </div>
+                          ) : (
+                            <div className="inline-flex rounded-xl p-1 bg-slate-100 gap-1 border border-slate-200">
+                              {/* Full Day */}
+                              <button
+                                type="button"
+                                onClick={() => handleSetStatus(emp.id, 'full_day')}
+                                className={`px-2.5 py-1 rounded-lg text-xs font-bold transition flex items-center gap-1 ${
+                                  current.status === 'full_day'
+                                    ? 'bg-emerald-600 text-white shadow-xs'
+                                    : 'text-slate-600 hover:text-slate-900'
+                                }`}
+                              >
+                                <span>Full Day</span>
+                              </button>
 
-                            {/* Half Day */}
-                            <button
-                              type="button"
-                              onClick={() => handleSetStatus(emp.id, 'half_day')}
-                              className={`px-2.5 py-1 rounded-lg text-xs font-bold transition flex items-center gap-1 ${
-                                current.status === 'half_day'
-                                  ? 'bg-amber-500 text-white shadow-xs'
-                                  : 'text-slate-600 hover:text-slate-900'
-                              }`}
-                            >
-                              <span>Half Day</span>
-                            </button>
+                              {/* Half Day */}
+                              <button
+                                type="button"
+                                onClick={() => handleSetStatus(emp.id, 'half_day')}
+                                className={`px-2.5 py-1 rounded-lg text-xs font-bold transition flex items-center gap-1 ${
+                                  current.status === 'half_day'
+                                    ? 'bg-amber-500 text-white shadow-xs'
+                                    : 'text-slate-600 hover:text-slate-900'
+                                }`}
+                              >
+                                <span>Half Day</span>
+                              </button>
 
-                            {/* Absent */}
-                            <button
-                              type="button"
-                              onClick={() => handleSetStatus(emp.id, 'absent')}
-                              className={`px-2.5 py-1 rounded-lg text-xs font-bold transition flex items-center gap-1 ${
-                                current.status === 'absent'
-                                  ? 'bg-rose-600 text-white shadow-xs'
-                                  : 'text-slate-600 hover:text-slate-900'
-                              }`}
-                            >
-                              <span>Absent</span>
-                            </button>
+                              {/* Absent */}
+                              <button
+                                type="button"
+                                onClick={() => handleSetStatus(emp.id, 'absent')}
+                                className={`px-2.5 py-1 rounded-lg text-xs font-bold transition flex items-center gap-1 ${
+                                  current.status === 'absent'
+                                    ? 'bg-rose-600 text-white shadow-xs'
+                                    : 'text-slate-600 hover:text-slate-900'
+                                }`}
+                              >
+                                <span>Absent</span>
+                              </button>
 
-                            {/* Holiday */}
-                            <button
-                              type="button"
-                              onClick={() => handleSetStatus(emp.id, 'holiday')}
-                              className={`px-2.5 py-1 rounded-lg text-xs font-bold transition flex items-center gap-1 ${
-                                current.status === 'holiday'
-                                  ? 'bg-slate-700 text-white shadow-xs'
-                                  : 'text-slate-600 hover:text-slate-900'
-                              }`}
-                            >
-                              <span>Holiday</span>
-                            </button>
-                          </div>
+                              {/* Holiday */}
+                              <button
+                                type="button"
+                                onClick={() => handleSetStatus(emp.id, 'holiday')}
+                                className={`px-2.5 py-1 rounded-lg text-xs font-bold transition flex items-center gap-1 ${
+                                  current.status === 'holiday'
+                                    ? 'bg-slate-700 text-white shadow-xs'
+                                    : 'text-slate-600 hover:text-slate-900'
+                                }`}
+                              >
+                                <span>Holiday</span>
+                              </button>
+                            </div>
+                          )}
                         </td>
 
                         {/* Work Notes */}
                         <td className="py-3.5 px-4">
-                          <input
-                            type="text"
-                            value={current.notes}
-                            onChange={(e) => handleSetNotes(emp.id, e.target.value)}
-                            placeholder="Optional work notes / overtime..."
-                            className="w-full px-2.5 py-1 border border-slate-200 rounded-lg text-xs text-slate-800 bg-white focus:border-dp-navy focus:outline-none"
-                          />
+                          {!isEmployed ? (
+                            <input
+                              type="text"
+                              disabled
+                              value=""
+                              placeholder={`Employee not joined yet (Starts ${emp.startDate})`}
+                              className="w-full px-2.5 py-1 border border-slate-200 rounded-lg text-xs text-slate-400 bg-slate-100 cursor-not-allowed"
+                            />
+                          ) : (
+                            <input
+                              type="text"
+                              value={current.notes}
+                              onChange={(e) => handleSetNotes(emp.id, e.target.value)}
+                              placeholder="Optional work notes / overtime..."
+                              className="w-full px-2.5 py-1 border border-slate-200 rounded-lg text-xs text-slate-800 bg-white focus:border-dp-navy focus:outline-none"
+                            />
+                          )}
                         </td>
 
                         {/* Daily Earned */}
                         <td className="py-3.5 px-4 text-right whitespace-nowrap">
-                          {isPerm ? (
+                          {!isEmployed ? (
+                            <div>
+                              <span className="font-bold text-slate-400">₹0</span>
+                              <span className="text-[10px] text-rose-500 font-bold block">
+                                Pre-Joining
+                              </span>
+                            </div>
+                          ) : isPerm ? (
                             <div>
                               <span className="font-bold text-slate-800">
                                 ₹{dayEarned}
@@ -976,6 +1076,26 @@ export default function AttendancePage() {
               </div>
             </div>
           </div>
+
+          {/* Error Banner when selected month is before employee joining date */}
+          {unjoinedEmployeesInMonth.length > 0 && (
+            <div className="bg-rose-50 border-2 border-rose-300 text-rose-900 p-4 rounded-xl text-xs flex items-start gap-3 shadow-xs animate-fadeIn">
+              <AlertCircle className="w-5 h-5 text-rose-600 shrink-0 mt-0.5" />
+              <div className="space-y-1">
+                <span className="font-extrabold text-sm block text-rose-950">
+                  ⚠️ Error: Selected Period ({selectedMonth}/{selectedYear}) is Before Employee Joining Date
+                </span>
+                <p className="text-rose-800 font-medium">
+                  {unjoinedEmployeesInMonth.map((u) => (
+                    <span key={u.id} className="block">
+                      • <strong>{u.name}</strong> joined on <strong>{u.startDate}</strong>.
+                    </span>
+                  ))}
+                  Salary and wages cannot be calculated or disbursed for months prior to the employee's official joining date.
+                </p>
+              </div>
+            </div>
+          )}
 
           {/* Monthly Table (One Row per Employee) */}
           <div className="bg-white rounded-xl border border-slate-200 shadow-xs overflow-hidden">
