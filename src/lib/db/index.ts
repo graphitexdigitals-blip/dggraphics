@@ -64,12 +64,37 @@ export interface DatabaseSchema {
   salaryPayments?: MonthlySalaryPayment[];
 }
 
-const DATA_DIR = path.join(process.cwd(), 'data');
-const DB_PATH = path.join(DATA_DIR, 'db.json');
+const isVercelServerless = Boolean(
+  process.env.VERCEL ||
+  process.env.AWS_LAMBDA_FUNCTION_NAME ||
+  process.env.NOW_REGION
+);
+
+const LOCAL_DATA_DIR = path.join(process.cwd(), 'data');
+const LOCAL_DB_PATH = path.join(LOCAL_DATA_DIR, 'db.json');
+
+const DATA_DIR = isVercelServerless ? '/tmp/dp_data' : LOCAL_DATA_DIR;
+const DB_PATH = isVercelServerless ? path.join(DATA_DIR, 'db.json') : LOCAL_DB_PATH;
 
 function ensureDatabase(): DatabaseSchema {
   if (!fs.existsSync(DATA_DIR)) {
-    fs.mkdirSync(DATA_DIR, { recursive: true });
+    try {
+      fs.mkdirSync(DATA_DIR, { recursive: true });
+    } catch (e) {
+      console.warn('Could not create DATA_DIR:', e);
+    }
+  }
+
+  // When running on Vercel serverless, copy the bundled seed db.json into the writable /tmp directory
+  if (isVercelServerless && !fs.existsSync(DB_PATH)) {
+    try {
+      if (fs.existsSync(LOCAL_DB_PATH)) {
+        const bundledContent = fs.readFileSync(LOCAL_DB_PATH, 'utf-8');
+        fs.writeFileSync(DB_PATH, bundledContent, 'utf-8');
+      }
+    } catch (e) {
+      console.warn('Could not copy bundled db.json to /tmp:', e);
+    }
   }
 
   if (!fs.existsSync(DB_PATH)) {
@@ -92,8 +117,14 @@ function ensureDatabase(): DatabaseSchema {
       designRevisions: initialDesignRevisions,
       settings: initialBusinessSettings,
       users: initialUsers,
+      attendances: [],
+      salaryPayments: [],
     };
-    fs.writeFileSync(DB_PATH, JSON.stringify(initialDb, null, 2), 'utf-8');
+    try {
+      fs.writeFileSync(DB_PATH, JSON.stringify(initialDb, null, 2), 'utf-8');
+    } catch (e) {
+      console.warn('Could not write initial DB_PATH:', e);
+    }
     return initialDb;
   }
 
@@ -109,6 +140,12 @@ function ensureDatabase(): DatabaseSchema {
     return parsed;
   } catch (err) {
     console.error('Error reading db.json, repairing...', err);
+    if (isVercelServerless && fs.existsSync(LOCAL_DB_PATH)) {
+      try {
+        const rawBundled = fs.readFileSync(LOCAL_DB_PATH, 'utf-8');
+        return JSON.parse(rawBundled) as DatabaseSchema;
+      } catch {}
+    }
     const fallback: DatabaseSchema = {
       categories: initialCategories,
       products: initialProducts,
@@ -128,19 +165,34 @@ function ensureDatabase(): DatabaseSchema {
       designRevisions: initialDesignRevisions,
       settings: initialBusinessSettings,
       users: initialUsers,
+      attendances: [],
+      salaryPayments: [],
     };
-    fs.writeFileSync(DB_PATH, JSON.stringify(fallback, null, 2), 'utf-8');
+    try {
+      fs.writeFileSync(DB_PATH, JSON.stringify(fallback, null, 2), 'utf-8');
+    } catch (e) {
+      console.warn('Could not write fallback db:', e);
+    }
     return fallback;
   }
 }
 
 function saveDatabase(data: DatabaseSchema): void {
-  if (!fs.existsSync(DATA_DIR)) {
-    fs.mkdirSync(DATA_DIR, { recursive: true });
+  try {
+    if (!fs.existsSync(DATA_DIR)) {
+      fs.mkdirSync(DATA_DIR, { recursive: true });
+    }
+    const tempPath = path.join(DATA_DIR, `db.tmp.${Date.now()}`);
+    fs.writeFileSync(tempPath, JSON.stringify(data, null, 2), 'utf-8');
+    fs.renameSync(tempPath, DB_PATH);
+  } catch (err) {
+    console.warn('Failed to write via temp file, trying direct overwrite:', err);
+    try {
+      fs.writeFileSync(DB_PATH, JSON.stringify(data, null, 2), 'utf-8');
+    } catch (secondErr) {
+      console.error('Critical: unable to save database to disk:', secondErr);
+    }
   }
-  const tempPath = path.join(DATA_DIR, `db.tmp.${Date.now()}`);
-  fs.writeFileSync(tempPath, JSON.stringify(data, null, 2), 'utf-8');
-  fs.renameSync(tempPath, DB_PATH);
 }
 
 // ----------------------------------------------------
