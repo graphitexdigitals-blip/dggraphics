@@ -1,6 +1,481 @@
 {
-  "categories": [],
-  "products": [],
+  "categories": [
+    {
+      "id": "cat-1",
+      "name": "Photo Gifts",
+      "slug": "photo-gifts",
+      "description": "Personalized coffee mugs, customized photo frames, keychains, and keepsake gift items.",
+      "image": "https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?auto=format&fit=crop&w=800&q=80",
+      "sortOrder": 1,
+      "isActive": true
+    },
+    {
+      "id": "cat-2",
+      "name": "Apparel Printing",
+      "slug": "apparel-printing",
+      "description": "Custom screen-printed & DTF t-shirts, corporate polo uniforms, and custom hoodies.",
+      "image": "https://images.unsplash.com/photo-1521572267360-ee0c2909d518?auto=format&fit=crop&w=800&q=80",
+      "sortOrder": 2,
+      "isActive": true
+    },
+    {
+      "id": "cat-3",
+      "name": "Large Format & Banners",
+      "slug": "large-format",
+      "description": "Heavy duty flex banners, backlit displays, star flex, roll-up standees, and hoardings.",
+      "image": "https://images.unsplash.com/photo-1558655146-d09347e92766?auto=format&fit=crop&w=800&q=80",
+      "sortOrder": 3,
+      "isActive": true
+    },
+    {
+      "id": "cat-4",
+      "name": "Stickers & Labels",
+      "slug": "stickers-labels",
+      "description": "Die-cut vinyl stickers, car graphics, waterproof product packaging labels, and sunboard.",
+      "image": "https://images.unsplash.com/photo-1572375992501-4b0892d50c69?auto=format&fit=crop&w=800&q=80",
+      "sortOrder": 4,
+      "isActive": true
+    },
+    {
+      "id": "cat-5",
+      "name": "Business Stationery",
+      "slug": "business-stationery",
+      "description": "Premium visiting cards, corporate letterheads, tri-fold brochures, and flyers.",
+      "image": "https://images.unsplash.com/photo-1589330694653-ded6df03f754?auto=format&fit=crop&w=800&q=80",
+      "sortOrder": 5,
+      "isActive": true
+    },
+    {
+      "id": "cat-6",
+      "name": "Creative Graphic Design",
+      "slug": "graphic-design",
+      "description": "Bespoke corporate identity, logo design, packaging layout, and social media branding.",
+      "image": "https://images.unsplash.com/photo-1626785774573-4b799315345d?auto=format&fit=crop&w=800&q=80",
+      "sortOrder": 6,
+      "isActive": true
+    }
+  ],
+  "products": [
+    {
+      "id": "prod-1",
+      "categoryId": "cat-1",
+      "name": "Personalized Ceramic Coffee Mug",
+      "slug": "personalized-ceramic-coffee-mug",
+      "description": "High-grade 11oz ceramic mug with vibrant dye-sublimation print. Microwave and dishwasher safe with high gloss finish.",
+      "shortDescription": "11oz Glossy Ceramic Mug with HD sublimation print",
+      "pricingType": "fixed",
+      "basePrice": 250,
+      "minQuantity": 1,
+      "images": [
+        "https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?auto=format&fit=crop&w=800&q=80",
+        "https://images.unsplash.com/photo-1577937927133-66ef06acdf18?auto=format&fit=crop&w=800&q=80"
+      ],
+      "materials": [
+        {
+          "id": "m-1",
+          "name": "Standard White Ceramic",
+          "additionalCharge": 0
+        },
+        {
+          "id": "m-2",
+          "name": "Magic Colour Changing Mug (Heat Reactive)",
+          "additionalCharge": 120
+        },
+        {
+          "id": "m-3",
+          "name": "Two-Tone Inner Color Mug",
+          "additionalCharge": 60
+        }
+      ],
+      "finishingOptions": [
+        {
+          "id": "f-1",
+          "name": "Gift Box Packaging with Ribbon",
+          "charge": 40,
+          "chargeType": "per_unit"
+        },
+        {
+          "id": "f-2",
+          "name": "Thermo-insulating sleeve",
+          "charge": 50,
+          "chargeType": "per_unit"
+        }
+      ],
+      "colors": [
+        "Pure White",
+        "Black Magic",
+        "Inner Red",
+        "Inner Royal Blue"
+      ],
+      "isBestSeller": true,
+      "isPopular": true,
+      "isActive": true,
+      "turnaroundTime": "Same Day / 24 Hours"
+    },
+    {
+      "id": "prod-2",
+      "categoryId": "cat-2",
+      "name": "Custom Printed Bio-Washed Cotton T-Shirt",
+      "slug": "custom-cotton-tshirt",
+      "description": "180 GSM 100% premium combed bio-washed cotton. Printed using high-resolution DTF (Direct to Film) technology for vivid, crack-proof prints.",
+      "shortDescription": "180 GSM 100% Cotton with vibrant crack-resistant DTF print",
+      "pricingType": "fixed",
+      "basePrice": 380,
+      "minQuantity": 1,
+      "images": [
+        "https://images.unsplash.com/photo-1521572267360-ee0c2909d518?auto=format&fit=crop&w=800&q=80",
+        "https://images.unsplash.com/photo-1503342217505-b0a15ec3261c?auto=format&fit=crop&w=800&q=80"
+      ],
+      "sizes": [
+        "S (38)",
+        "M (40)",
+        "L (42)",
+        "XL (44)",
+        "XXL (46)"
+      ],
+      "colors": [
+        "Deep Navy",
+        "Charcoal Black",
+        "Pure White",
+        "Royal Blue",
+        "Maroon"
+      ],
+      "materials": [
+        {
+          "id": "t-1",
+          "name": "180 GSM Bio-Washed Single Jersey",
+          "additionalCharge": 0
+        },
+        {
+          "id": "t-2",
+          "name": "220 GSM Heavyweight Terry Cotton",
+          "additionalCharge": 90
+        },
+        {
+          "id": "t-3",
+          "name": "100% Polyester Quick-Dry Sports Mesh",
+          "additionalCharge": -40
+        }
+      ],
+      "finishingOptions": [
+        {
+          "id": "tf-1",
+          "name": "Double-sided Print (Front + Back)",
+          "charge": 120,
+          "chargeType": "per_unit"
+        },
+        {
+          "id": "tf-2",
+          "name": "Individual poly-bag packing with brand tag",
+          "charge": 20,
+          "chargeType": "per_unit"
+        }
+      ],
+      "isBestSeller": true,
+      "isPopular": true,
+      "isActive": true,
+      "turnaroundTime": "2-3 Business Days"
+    },
+    {
+      "id": "prod-3",
+      "categoryId": "cat-3",
+      "name": "Commercial Flex Banner Printing",
+      "slug": "commercial-flex-banner",
+      "description": "Weatherproof all-season flex banner printed with UV solvent inks. High tensile strength, tear resistant, ideal for shopfronts, events, and hoardings.",
+      "shortDescription": "Weatherproof heavy-duty outdoor banner printing",
+      "pricingType": "sqft",
+      "basePrice": 28,
+      "minQuantity": 1,
+      "minBillableArea": 10,
+      "images": [
+        "https://images.unsplash.com/photo-1558655146-d09347e92766?auto=format&fit=crop&w=800&q=80",
+        "https://images.unsplash.com/photo-1542744094-3a31f272c490?auto=format&fit=crop&w=800&q=80"
+      ],
+      "materials": [
+        {
+          "id": "flex-1",
+          "name": "Normal 260 GSM Frontlit Flex",
+          "pricePerSqft": 25
+        },
+        {
+          "id": "flex-2",
+          "name": "Star Flex Heavy Duty 340 GSM",
+          "pricePerSqft": 35
+        },
+        {
+          "id": "flex-3",
+          "name": "Backlit Translucent Flex for Glowsigns",
+          "pricePerSqft": 55
+        },
+        {
+          "id": "flex-4",
+          "name": "Blackout Flex (Blockout Double Sided)",
+          "pricePerSqft": 65
+        }
+      ],
+      "finishingOptions": [
+        {
+          "id": "bf-1",
+          "name": "Brass Eyelets / Grommets on 4 corners",
+          "charge": 50,
+          "chargeType": "fixed"
+        },
+        {
+          "id": "bf-2",
+          "name": "Reinforced welded hem pockets (Top & Bottom for pipes)",
+          "charge": 80,
+          "chargeType": "fixed"
+        },
+        {
+          "id": "bf-3",
+          "name": "On-site framing & installation service",
+          "charge": 15,
+          "chargeType": "per_sqft"
+        }
+      ],
+      "isBestSeller": true,
+      "isPopular": true,
+      "isActive": true,
+      "turnaroundTime": "24 Hours Turnaround"
+    },
+    {
+      "id": "prod-4",
+      "categoryId": "cat-4",
+      "name": "Vinyl Stickers & Die-Cut Decals",
+      "slug": "vinyl-stickers-diecut-decals",
+      "description": "Precision contour-cut waterproof vinyl stickers. High adhesive strength, UV laminated to withstand sun, rain, and scratching. Perfect for vehicles and packaging.",
+      "shortDescription": "Custom waterproof vinyl decals with precision contour cut",
+      "pricingType": "sqft",
+      "basePrice": 50,
+      "minQuantity": 1,
+      "minBillableArea": 4,
+      "images": [
+        "https://images.unsplash.com/photo-1572375992501-4b0892d50c69?auto=format&fit=crop&w=800&q=80",
+        "https://images.unsplash.com/photo-1561070791-2526d30994b5?auto=format&fit=crop&w=800&q=80"
+      ],
+      "materials": [
+        {
+          "id": "vn-1",
+          "name": "Glossy White Vinyl",
+          "pricePerSqft": 45
+        },
+        {
+          "id": "vn-2",
+          "name": "Matte Finish Non-Glare Vinyl",
+          "pricePerSqft": 50
+        },
+        {
+          "id": "vn-3",
+          "name": "Clear Transparent Vinyl",
+          "pricePerSqft": 65
+        },
+        {
+          "id": "vn-4",
+          "name": "Reflective Night-Glow Vinyl (3M Grade)",
+          "pricePerSqft": 110
+        }
+      ],
+      "finishingOptions": [
+        {
+          "id": "vf-1",
+          "name": "Matte Lamination Scratch-Proof Coat",
+          "charge": 12,
+          "chargeType": "per_sqft"
+        },
+        {
+          "id": "vf-2",
+          "name": "Mounting on 3mm Sunboard Sheet",
+          "charge": 35,
+          "chargeType": "per_sqft"
+        }
+      ],
+      "isBestSeller": false,
+      "isPopular": true,
+      "isActive": true,
+      "turnaroundTime": "1-2 Days"
+    },
+    {
+      "id": "prod-5",
+      "categoryId": "cat-5",
+      "name": "Executive Visiting Cards (Set of 100)",
+      "slug": "executive-visiting-cards",
+      "description": "350 GSM premium art card with velvety soft-touch matte lamination. Clean sharp offset printing that leaves an unforgettable professional impression.",
+      "shortDescription": "350 GSM Soft-Touch Matte Visiting Cards",
+      "pricingType": "fixed",
+      "basePrice": 350,
+      "minQuantity": 1,
+      "images": [
+        "https://images.unsplash.com/photo-1589330694653-ded6df03f754?auto=format&fit=crop&w=800&q=80",
+        "https://images.unsplash.com/photo-1544717305-2782549b5136?auto=format&fit=crop&w=800&q=80"
+      ],
+      "materials": [
+        {
+          "id": "card-1",
+          "name": "350 GSM Art Board with Dual Matte Lam",
+          "additionalCharge": 0
+        },
+        {
+          "id": "card-2",
+          "name": "400 GSM Ultra-Thick Velvet Touch",
+          "additionalCharge": 150
+        },
+        {
+          "id": "card-3",
+          "name": "Kraft Eco-Textured Vintage Card",
+          "additionalCharge": 100
+        }
+      ],
+      "finishingOptions": [
+        {
+          "id": "cf-1",
+          "name": "Spot UV Varnish on Logo",
+          "charge": 200,
+          "chargeType": "fixed"
+        },
+        {
+          "id": "cf-2",
+          "name": "Gold / Silver Foil Stamping",
+          "charge": 350,
+          "chargeType": "fixed"
+        },
+        {
+          "id": "cf-3",
+          "name": "Rounded Corners (Die-punch)",
+          "charge": 50,
+          "chargeType": "fixed"
+        }
+      ],
+      "isBestSeller": true,
+      "isPopular": true,
+      "isActive": true,
+      "turnaroundTime": "2 Days"
+    },
+    {
+      "id": "prod-6",
+      "categoryId": "cat-6",
+      "name": "Bespoke Logo & Brand Identity Package",
+      "slug": "bespoke-logo-brand-identity",
+      "description": "Full creative brand development by our senior graphic designers. Includes 3 unique logo concepts, unlimited revisions, high-res vectors, colour palettes, and typography guidelines.",
+      "shortDescription": "Comprehensive corporate logo design with vector master files",
+      "pricingType": "fixed",
+      "basePrice": 1800,
+      "minQuantity": 1,
+      "images": [
+        "https://images.unsplash.com/photo-1626785774573-4b799315345d?auto=format&fit=crop&w=800&q=80"
+      ],
+      "materials": [
+        {
+          "id": "des-1",
+          "name": "Standard (3 Concepts + High Res Files)",
+          "additionalCharge": 0
+        },
+        {
+          "id": "des-2",
+          "name": "Enterprise (5 Concepts + Social Kit + Stationery Mockups)",
+          "additionalCharge": 1500
+        }
+      ],
+      "finishingOptions": [
+        {
+          "id": "df-1",
+          "name": "Express 24h Concept Delivery",
+          "charge": 500,
+          "chargeType": "fixed"
+        },
+        {
+          "id": "df-2",
+          "name": "Brand Style Guide Document (PDF)",
+          "charge": 600,
+          "chargeType": "fixed"
+        }
+      ],
+      "isBestSeller": false,
+      "isPopular": true,
+      "isActive": true,
+      "turnaroundTime": "3-4 Days"
+    },
+    {
+      "id": "prod-7",
+      "categoryId": "cat-3",
+      "name": "Roll-Up Aluminum Standee Banner (6x3 ft)",
+      "slug": "rollup-standee-banner",
+      "description": "Complete portable promotional display unit. Includes high-resolution non-tearable synthetic banner with silver anodized aluminum cassette and carry bag.",
+      "shortDescription": "Portable 6x3 ft aluminum base standee with non-tear vinyl",
+      "pricingType": "fixed",
+      "basePrice": 1450,
+      "minQuantity": 1,
+      "images": [
+        "https://images.unsplash.com/photo-1542744094-3a31f272c490?auto=format&fit=crop&w=800&q=80"
+      ],
+      "materials": [
+        {
+          "id": "st-1",
+          "name": "Standard Aluminum Base + Non-Tear Star Media",
+          "additionalCharge": 0
+        },
+        {
+          "id": "st-2",
+          "name": "Luxury Wide Base Standee with Chrome Ends",
+          "additionalCharge": 600
+        }
+      ],
+      "finishingOptions": [
+        {
+          "id": "sf-1",
+          "name": "Padded Oxford Carry Bag",
+          "charge": 150,
+          "chargeType": "fixed"
+        }
+      ],
+      "isBestSeller": true,
+      "isPopular": true,
+      "isActive": true,
+      "turnaroundTime": "24 Hours"
+    },
+    {
+      "id": "prod-8",
+      "categoryId": "cat-1",
+      "name": "Custom Acrylic Photo Block Frame",
+      "slug": "acrylic-photo-block-frame",
+      "description": "Museum-grade optical crystal clear acrylic frame. 20mm thickness, direct UV flatbed printed on the back creating a stunning 3D glass-like depth effect.",
+      "shortDescription": "20mm thick crystal-clear acrylic desktop photo block",
+      "pricingType": "fixed",
+      "basePrice": 650,
+      "minQuantity": 1,
+      "images": [
+        "https://images.unsplash.com/photo-1534447677768-be436bb09401?auto=format&fit=crop&w=800&q=80"
+      ],
+      "materials": [
+        {
+          "id": "ac-1",
+          "name": "6x4 inches (20mm thickness)",
+          "additionalCharge": 0
+        },
+        {
+          "id": "ac-2",
+          "name": "8x6 inches (20mm thickness)",
+          "additionalCharge": 350
+        },
+        {
+          "id": "ac-3",
+          "name": "10x8 inches (20mm thickness)",
+          "additionalCharge": 700
+        }
+      ],
+      "finishingOptions": [
+        {
+          "id": "af-1",
+          "name": "Luxury Matte Black Gift Box",
+          "charge": 90,
+          "chargeType": "fixed"
+        }
+      ],
+      "isBestSeller": false,
+      "isPopular": true,
+      "isActive": true,
+      "turnaroundTime": "2 Days"
+    }
+  ],
   "customers": [],
   "orders": [],
   "productionTasks": [],
