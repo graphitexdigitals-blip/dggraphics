@@ -252,63 +252,71 @@ export default function AdminDashboardPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {orders.slice(0, 7).map((order) => {
-                    const isOutsourced = order.productionMethod === 'vendor_outsourced';
-                    return (
-                      <tr key={order.id} className="hover:bg-slate-50/80 transition">
-                        <td className="py-2.5 px-4 whitespace-nowrap">
-                          <span className="font-mono font-bold text-slate-900 block">{order.jobNumber}</span>
-                          <span className="text-[10px] text-slate-400 font-mono">
-                            {order.createdAt ? new Date(order.createdAt).toLocaleDateString('en-IN') : 'Recent'}
-                          </span>
-                        </td>
+                  {orders.length === 0 ? (
+                    <tr>
+                      <td colSpan={7} className="py-10 text-center text-xs text-slate-400">
+                        No orders recorded yet. Click &quot;Walk-in Order&quot; to record your first studio order.
+                      </td>
+                    </tr>
+                  ) : (
+                    orders.slice(0, 7).map((order) => {
+                      const isOutsourced = order.productionMethod === 'vendor_outsourced';
+                      return (
+                        <tr key={order.id} className="hover:bg-slate-50/80 transition">
+                          <td className="py-2.5 px-4 whitespace-nowrap">
+                            <span className="font-mono font-bold text-slate-900 block">{order.jobNumber}</span>
+                            <span className="text-[10px] text-slate-400 font-mono">
+                              {order.createdAt ? new Date(order.createdAt).toLocaleDateString('en-IN') : 'Recent'}
+                            </span>
+                          </td>
 
-                        <td className="py-2.5 px-4 whitespace-nowrap">
-                          <span className="font-bold text-slate-900 block">{order.customerName}</span>
-                          <span className="text-[10px] text-slate-400 font-mono">{order.customerPhone}</span>
-                        </td>
+                          <td className="py-2.5 px-4 whitespace-nowrap">
+                            <span className="font-bold text-slate-900 block">{order.customerName}</span>
+                            <span className="text-[10px] text-slate-400 font-mono">{order.customerPhone}</span>
+                          </td>
 
-                        <td className="py-2.5 px-4 whitespace-nowrap">
-                          <span
-                            className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                              isOutsourced
-                                ? 'bg-purple-50 text-purple-700 border border-purple-200'
-                                : 'bg-slate-100 text-slate-700'
-                            }`}
-                          >
-                            {isOutsourced ? 'Vendor' : 'In-House'}
-                          </span>
-                        </td>
+                          <td className="py-2.5 px-4 whitespace-nowrap">
+                            <span
+                              className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                                isOutsourced
+                                  ? 'bg-purple-50 text-purple-700 border border-purple-200'
+                                  : 'bg-slate-100 text-slate-700'
+                              }`}
+                            >
+                              {isOutsourced ? 'Vendor' : 'In-House'}
+                            </span>
+                          </td>
 
-                        <td className="py-2.5 px-4 whitespace-nowrap font-bold text-slate-900">
-                          ₹{order.grandTotal.toLocaleString('en-IN')}
-                        </td>
+                          <td className="py-2.5 px-4 whitespace-nowrap font-bold text-slate-900">
+                            ₹{order.grandTotal.toLocaleString('en-IN')}
+                          </td>
 
-                        <td className="py-2.5 px-4 whitespace-nowrap">
-                          {order.balanceDue <= 0 ? (
-                            <span className="text-emerald-700 font-bold text-xs">Paid</span>
-                          ) : (
-                            <span className="text-amber-700 font-bold text-xs">₹{order.balanceDue.toLocaleString('en-IN')}</span>
-                          )}
-                        </td>
+                          <td className="py-2.5 px-4 whitespace-nowrap">
+                            {order.balanceDue <= 0 ? (
+                              <span className="text-emerald-700 font-bold text-xs">Paid</span>
+                            ) : (
+                              <span className="text-amber-700 font-bold text-xs">₹{order.balanceDue.toLocaleString('en-IN')}</span>
+                            )}
+                          </td>
 
-                        <td className="py-2.5 px-4 whitespace-nowrap">
-                          <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-800">
-                            {order.orderStatus}
-                          </span>
-                        </td>
+                          <td className="py-2.5 px-4 whitespace-nowrap">
+                            <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-800">
+                              {order.orderStatus}
+                            </span>
+                          </td>
 
-                        <td className="py-2.5 px-4 text-right whitespace-nowrap">
-                          <Link
-                            href="/admin/track"
-                            className="text-xs font-bold text-slate-600 hover:text-dp-orange px-2 py-1 rounded hover:bg-slate-100 transition"
-                          >
-                            Track →
-                          </Link>
-                        </td>
-                      </tr>
-                    );
-                  })}
+                          <td className="py-2.5 px-4 text-right whitespace-nowrap">
+                            <Link
+                              href="/admin/track"
+                              className="text-xs font-bold text-slate-600 hover:text-blue-600 px-2 py-1 rounded hover:bg-slate-100 transition"
+                            >
+                              Track →
+                            </Link>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
                 </tbody>
               </table>
             </div>
@@ -340,23 +348,29 @@ export default function AdminDashboardPage() {
             </div>
 
             <div className="p-3 divide-y divide-slate-100">
-              {unpaidInvoices.slice(0, 5).map((inv) => (
-                <div key={inv.id} className="py-2 flex items-center justify-between text-xs first:pt-1 last:pb-1">
-                  <div>
-                    <span className="font-medium text-slate-800 block">{inv.customerName}</span>
-                    <span className="text-[10px] text-slate-400 font-mono">{inv.invoiceNumber}</span>
-                  </div>
-                  <div className="text-right">
-                    <span className="font-semibold text-amber-700 block">₹{inv.balanceDue}</span>
-                    <Link
-                      href="/admin/billing"
-                      className="text-[10px] font-medium text-blue-600 hover:underline"
-                    >
-                      Collect →
-                    </Link>
-                  </div>
+              {unpaidInvoices.length === 0 ? (
+                <div className="py-8 text-center text-xs text-slate-400">
+                  All accounts settled. No pending dues.
                 </div>
-              ))}
+              ) : (
+                unpaidInvoices.slice(0, 5).map((inv) => (
+                  <div key={inv.id} className="py-2 flex items-center justify-between text-xs first:pt-1 last:pb-1">
+                    <div>
+                      <span className="font-medium text-slate-800 block">{inv.customerName}</span>
+                      <span className="text-[10px] text-slate-400 font-mono">{inv.invoiceNumber}</span>
+                    </div>
+                    <div className="text-right">
+                      <span className="font-semibold text-amber-700 block">₹{inv.balanceDue}</span>
+                      <Link
+                        href="/admin/billing"
+                        className="text-[10px] font-medium text-blue-600 hover:underline"
+                      >
+                        Collect →
+                      </Link>
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
 
             <div className="px-4 py-2 bg-slate-50/60 border-t border-slate-100 text-center">
