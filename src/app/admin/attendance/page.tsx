@@ -107,6 +107,7 @@ export default function AttendancePage() {
   // Monthly Salary / Wage Payment Status State
   const [salaryPayments, setSalaryPayments] = useState<MonthlySalaryPayment[]>([]);
   const [paymentStatuses, setPaymentStatuses] = useState<Record<string, 'Paid' | 'Pending'>>({});
+  const [customPayableAmounts, setCustomPayableAmounts] = useState<Record<string, number>>({});
   const [savingPaymentId, setSavingPaymentId] = useState<string | null>(null);
   const [savedPaymentSuccessId, setSavedPaymentSuccessId] = useState<string | null>(null);
 
@@ -130,15 +131,20 @@ export default function AttendancePage() {
         setSalaryPayments(data.salaryPayments || []);
         setAllSalaryPayments(data.allSalaryPayments || []);
 
-        // Sync monthly payment statuses
+        // Sync monthly payment statuses & saved custom amounts
         const newPaymentMap: Record<string, 'Paid' | 'Pending'> = {};
+        const savedAmountsMap: Record<string, number> = {};
         (data.employees || []).forEach((emp: Labour) => {
           const pRec = (data.salaryPayments || []).find(
             (p: MonthlySalaryPayment) => p.labourId === emp.id && p.month === monthStr
           );
           newPaymentMap[emp.id] = (pRec?.status === 'Paid') ? 'Paid' : 'Pending';
+          if (pRec && typeof pRec.amount === 'number' && pRec.amount > 0) {
+            savedAmountsMap[`${emp.id}-${monthStr}`] = pRec.amount;
+          }
         });
         setPaymentStatuses(newPaymentMap);
+        setCustomPayableAmounts((prev) => ({ ...savedAmountsMap, ...prev }));
 
         // Sync daily status state for selectedDate
         const newDaily: Record<string, { status: AttendanceStatus; notes: string }> = {};
@@ -564,17 +570,34 @@ export default function AttendancePage() {
     return { fullDays, halfDays, absents, holidays, effectiveDays, payable, notJoinedYet, joinedThisMonth, startDate: emp.startDate };
   };
 
+  // Helper to get effective payable amount (admin-edited override, saved DB amount, or auto-calculated amount)
+  const getPayableAmountForEmp = (emp: Labour, calculatedAmount: number, targetMonth?: string) => {
+    const m = targetMonth || `${selectedYear}-${selectedMonth}`;
+    const key = `${emp.id}-${m}`;
+    if (customPayableAmounts[key] !== undefined) {
+      return customPayableAmounts[key];
+    }
+    const pRec = (allSalaryPayments.length > 0 ? allSalaryPayments : salaryPayments).find(
+      (p) => p.labourId === emp.id && p.month === m
+    );
+    if (pRec && typeof pRec.amount === 'number' && pRec.amount >= 0) {
+      return pRec.amount;
+    }
+    return calculatedAmount;
+  };
+
   // Month-wide aggregated payroll & payout metrics
   const monthlyCalculatedList = employees.map((emp) => {
     const stats = getMonthlyStatsForEmployee(emp);
+    const payableAmount = getPayableAmountForEmp(emp, stats.payable);
     const status = paymentStatuses[emp.id] || 'Pending';
-    return { emp, stats, status };
+    return { emp, stats, payableAmount, status };
   });
 
-  const totalPayroll = monthlyCalculatedList.reduce((acc, curr) => acc + curr.stats.payable, 0);
+  const totalPayroll = monthlyCalculatedList.reduce((acc, curr) => acc + curr.payableAmount, 0);
   const totalPaid = monthlyCalculatedList
     .filter((i) => i.status === 'Paid')
-    .reduce((acc, curr) => acc + curr.stats.payable, 0);
+    .reduce((acc, curr) => acc + curr.payableAmount, 0);
   const totalPending = totalPayroll - totalPaid;
   const countPaid = monthlyCalculatedList.filter((i) => i.status === 'Paid').length;
   const countPending = monthlyCalculatedList.length - countPaid;
@@ -1221,6 +1244,7 @@ export default function AttendancePage() {
                       const isPerm = emp.paymentType === 'fixed_salary';
                       const currentStatus = paymentStatuses[emp.id] || 'Pending';
                       const saveKey = `${emp.id}-${selectedYear}-${selectedMonth}`;
+                      const empPayableAmount = getPayableAmountForEmp(emp, stats.payable);
 
                       return (
                         <tr key={emp.id} className="hover:bg-slate-50/80 transition">
@@ -1300,17 +1324,66 @@ export default function AttendancePage() {
                             {stats.effectiveDays}
                           </td>
 
-                          {/* Calculated Payable */}
-                          <td className="py-3.5 px-4 text-right whitespace-nowrap font-black text-sm text-slate-900">
-                            ₹{stats.payable.toLocaleString('en-IN')}
-                            {stats.notJoinedYet && (
-                              <div className="text-[10px] font-semibold text-slate-400">
-                                Not Employed Yet
+                          {/* Calculated Payable (Editable by Admin) */}
+                          <td className="py-3.5 px-4 text-right whitespace-nowrap">
+                            {stats.notJoinedYet ? (
+                              <div className="font-bold text-slate-400 text-xs">
+                                ₹0
+                                <div className="text-[10px] font-semibold text-slate-400">
+                                  Not Employed Yet
+                                </div>
                               </div>
-                            )}
-                            {stats.joinedThisMonth && (
-                              <div className="text-[10px] font-semibold text-amber-600">
-                                Pro-rated from start date
+                            ) : (
+                              <div className="flex flex-col items-end gap-1">
+                                <div className="inline-flex items-center justify-end bg-white border border-slate-300 rounded-lg shadow-2xs hover:border-blue-400 focus-within:border-blue-600 focus-within:ring-2 focus-within:ring-blue-500/20 transition px-2 py-1">
+                                  <span className="font-black text-slate-500 text-xs mr-1">₹</span>
+                                  <input
+                                    type="number"
+                                    min="0"
+                                    step="1"
+                                    value={empPayableAmount}
+                                    onChange={(e) => {
+                                      const val = parseFloat(e.target.value) || 0;
+                                      setCustomPayableAmounts((prev) => ({
+                                        ...prev,
+                                        [saveKey]: val,
+                                      }));
+                                    }}
+                                    className="w-24 text-right font-black text-sm text-slate-900 bg-transparent focus:outline-none"
+                                    title="Click to edit payable amount"
+                                  />
+                                  <Edit2 className="w-3 h-3 text-slate-400 ml-1 shrink-0 pointer-events-none" />
+                                </div>
+
+                                <div className="flex items-center gap-1.5 text-[10px]">
+                                  {empPayableAmount !== stats.payable ? (
+                                    <span className="font-semibold text-blue-700 flex items-center gap-1">
+                                      <span>✏️ Admin Override</span>
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          setCustomPayableAmounts((prev) => {
+                                            const copy = { ...prev };
+                                            delete copy[saveKey];
+                                            return copy;
+                                          });
+                                        }}
+                                        className="text-slate-400 hover:text-rose-600 underline text-[9px] ml-0.5"
+                                        title="Reset to calculated formula amount"
+                                      >
+                                        (Reset ₹{stats.payable.toLocaleString('en-IN')})
+                                      </button>
+                                    </span>
+                                  ) : stats.joinedThisMonth ? (
+                                    <span className="font-semibold text-amber-600">
+                                      Pro-rated from start date
+                                    </span>
+                                  ) : (
+                                    <span className="text-slate-400 font-medium">
+                                      Calculated from attendance
+                                    </span>
+                                  )}
+                                </div>
                               </div>
                             )}
                           </td>
@@ -1347,7 +1420,7 @@ export default function AttendancePage() {
                                 <button
                                   type="button"
                                   disabled={savingPaymentId === saveKey}
-                                  onClick={() => handleSavePaymentStatus(emp, stats.payable)}
+                                  onClick={() => handleSavePaymentStatus(emp, empPayableAmount)}
                                   className={`px-3 py-1 rounded-md font-medium text-xs shadow-xs transition flex items-center gap-1 ${
                                     savedPaymentSuccessId === saveKey
                                       ? 'bg-emerald-600 text-white'
@@ -1610,7 +1683,9 @@ export default function AttendancePage() {
                     </div>
                     <div className="bg-indigo-50 border border-indigo-200 p-2.5 rounded-xl">
                       <span className="text-[10px] uppercase font-bold text-indigo-700 block">💰 Payable Salary</span>
-                      <span className="text-lg font-black text-indigo-900">₹{calStats.payable.toLocaleString('en-IN')}</span>
+                      <span className="text-lg font-black text-indigo-900">
+                        ₹{getPayableAmountForEmp(calEmp, calStats.payable).toLocaleString('en-IN')}
+                      </span>
                     </div>
                   </div>
                 );
@@ -2022,6 +2097,7 @@ export default function AttendancePage() {
                         const currentStatus = paymentStatuses[emp.id] || 'Pending';
                         const paymentRecord = salaryPayments.find((p) => p.labourId === emp.id);
                         const saveKey = `${emp.id}-${selectedYear}-${selectedMonth}`;
+                        const empPayableAmount = getPayableAmountForEmp(emp, stats.payable);
 
                         return (
                           <tr key={emp.id} className="hover:bg-slate-50/80 transition">
@@ -2066,8 +2142,33 @@ export default function AttendancePage() {
                               </div>
                             </td>
 
-                            <td className="py-3.5 px-4 text-right whitespace-nowrap font-black text-sm text-slate-900">
-                              ₹{stats.payable.toLocaleString('en-IN')}
+                            <td className="py-3.5 px-4 text-right whitespace-nowrap">
+                              <div className="flex flex-col items-end gap-1">
+                                <div className="inline-flex items-center justify-end bg-white border border-slate-300 rounded-lg shadow-2xs hover:border-blue-400 focus-within:border-blue-600 focus-within:ring-2 focus-within:ring-blue-500/20 transition px-2 py-1">
+                                  <span className="font-black text-slate-500 text-xs mr-1">₹</span>
+                                  <input
+                                    type="number"
+                                    min="0"
+                                    step="1"
+                                    value={empPayableAmount}
+                                    onChange={(e) => {
+                                      const val = parseFloat(e.target.value) || 0;
+                                      setCustomPayableAmounts((prev) => ({
+                                        ...prev,
+                                        [saveKey]: val,
+                                      }));
+                                    }}
+                                    className="w-24 text-right font-black text-sm text-slate-900 bg-transparent focus:outline-none"
+                                    title="Click to edit payable amount"
+                                  />
+                                  <Edit2 className="w-3 h-3 text-slate-400 ml-1 shrink-0 pointer-events-none" />
+                                </div>
+                                {empPayableAmount !== stats.payable && (
+                                  <span className="text-[10px] font-semibold text-blue-700">
+                                    ✏️ Custom Amount
+                                  </span>
+                                )}
+                              </div>
                             </td>
 
                             <td className="py-3.5 px-4 text-center whitespace-nowrap">
@@ -2115,7 +2216,7 @@ export default function AttendancePage() {
                                 <button
                                   type="button"
                                   disabled={savingPaymentId === saveKey}
-                                  onClick={() => handleSavePaymentStatus(emp, stats.payable)}
+                                  onClick={() => handleSavePaymentStatus(emp, empPayableAmount)}
                                   className={`px-3 py-1.5 rounded-xl font-bold text-xs shadow-xs transition flex items-center gap-1 ${
                                     savedPaymentSuccessId === saveKey
                                       ? 'bg-emerald-600 text-white'
