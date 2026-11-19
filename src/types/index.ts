@@ -62,6 +62,7 @@ export interface Product {
   description: string;
   shortDescription?: string;
   pricingType: PricingType;
+  requiresDimensions?: boolean;
   basePrice: number; // For fixed: price per unit. For sqft: default rate per sq.ft.
   minQuantity: number;
   minBillableArea?: number; // in sq.ft., e.g. 5 sq.ft.

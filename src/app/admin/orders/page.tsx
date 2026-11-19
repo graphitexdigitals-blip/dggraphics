@@ -49,8 +49,9 @@ function AdminOrdersContent() {
   const [walkinPhone, setWalkinPhone] = useState('');
   const [walkinSelectedProduct, setWalkinSelectedProduct] = useState('');
   const [walkinQuantity, setWalkinQuantity] = useState(1);
-  const [walkinDimensions, setWalkinDimensions] = useState('5x3 ft');
-  const [walkinMaterial, setWalkinMaterial] = useState('Frontlit Flex');
+  const [walkinDimensions, setWalkinDimensions] = useState('');
+  const [showCustomDimensions, setShowCustomDimensions] = useState(false);
+  const [walkinMaterial, setWalkinMaterial] = useState('');
   const [walkinPrintingCharge, setWalkinPrintingCharge] = useState(500);
   const [walkinDesignCharge, setWalkinDesignCharge] = useState(0);
   const [walkinDiscount, setWalkinDiscount] = useState(0);
@@ -58,6 +59,25 @@ function AdminOrdersContent() {
   const [walkinMethod, setWalkinMethod] = useState<'in_house' | 'vendor_outsourced' | 'hybrid'>('in_house');
   const [walkinExpectedDate, setWalkinExpectedDate] = useState('');
   const [walkinNotes, setWalkinNotes] = useState('');
+
+  // Helper to determine if product requires dimensions (sqft products or explicit requiresDimensions flag)
+  const productRequiresDimensions = (prod?: Product | null) => {
+    if (!prod) return false;
+    if (typeof prod.requiresDimensions === 'boolean') return prod.requiresDimensions;
+    return prod.pricingType === 'sqft';
+  };
+
+  const handleProductSelect = (productId: string) => {
+    setWalkinSelectedProduct(productId);
+    const prod = products.find((p) => p.id === productId);
+    if (prod) {
+      const needsDims = productRequiresDimensions(prod);
+      setWalkinDimensions(needsDims ? '5x3 ft' : '');
+      setShowCustomDimensions(false);
+      setWalkinMaterial(prod.materials?.[0]?.name || '');
+      setWalkinPrintingCharge(prod.basePrice * walkinQuantity);
+    }
+  };
 
   const loadData = async () => {
     try {
@@ -74,7 +94,12 @@ function AdminOrdersContent() {
       if (prodData.success) {
         setProducts(prodData.products);
         if (prodData.products.length > 0) {
-          setWalkinSelectedProduct(prodData.products[0].id);
+          const first = prodData.products[0];
+          setWalkinSelectedProduct(first.id);
+          const needsDims = productRequiresDimensions(first);
+          setWalkinDimensions(needsDims ? '5x3 ft' : '');
+          setWalkinMaterial(first.materials?.[0]?.name || '');
+          setWalkinPrintingCharge(first.basePrice);
         }
       }
       if (custData.success) setCustomers(custData.customers);
@@ -131,7 +156,7 @@ function AdminOrdersContent() {
               pricingType: prod?.pricingType || 'fixed',
               quantity: walkinQuantity,
               material: walkinMaterial,
-              specialInstructions: `Dimensions: ${walkinDimensions}`,
+              specialInstructions: walkinDimensions.trim() ? `Dimensions: ${walkinDimensions.trim()}` : '',
               totalPrice: subtotal,
             },
           ],
@@ -431,14 +456,17 @@ function AdminOrdersContent() {
                   <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Select Base Product</label>
                   <select
                     value={walkinSelectedProduct}
-                    onChange={(e) => setWalkinSelectedProduct(e.target.value)}
-                    className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg focus:outline-none focus:border-dp-navy bg-white"
+                    onChange={(e) => handleProductSelect(e.target.value)}
+                    className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg focus:outline-none focus:border-dp-navy bg-white font-medium"
                   >
-                    {products.map((p) => (
-                      <option key={p.id} value={p.id}>
-                        {p.name}
-                      </option>
-                    ))}
+                    {products.map((p) => {
+                      const req = productRequiresDimensions(p);
+                      return (
+                        <option key={p.id} value={p.id}>
+                          {p.name} {req ? '• (Requires Dimensions / Size)' : ''}
+                        </option>
+                      );
+                    })}
                   </select>
                 </div>
                 <div>
@@ -447,34 +475,92 @@ function AdminOrdersContent() {
                     type="number"
                     min="1"
                     value={walkinQuantity}
-                    onChange={(e) => setWalkinQuantity(parseInt(e.target.value) || 1)}
+                    onChange={(e) => {
+                      const qty = parseInt(e.target.value) || 1;
+                      setWalkinQuantity(qty);
+                      const prod = products.find((p) => p.id === walkinSelectedProduct);
+                      if (prod) {
+                        setWalkinPrintingCharge(prod.basePrice * qty);
+                      }
+                    }}
                     className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg focus:outline-none focus:border-dp-navy"
                   />
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Dimensions / Size</label>
-                  <input
-                    type="text"
-                    value={walkinDimensions}
-                    onChange={(e) => setWalkinDimensions(e.target.value)}
-                    placeholder="e.g. 10x4 ft / L (42)"
-                    className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg focus:outline-none focus:border-dp-navy"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Material Specification</label>
-                  <input
-                    type="text"
-                    value={walkinMaterial}
-                    onChange={(e) => setWalkinMaterial(e.target.value)}
-                    placeholder="e.g. Star Flex 340 GSM"
-                    className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg focus:outline-none focus:border-dp-navy"
-                  />
-                </div>
-              </div>
+              {/* Dimensions & Material Specification (Only show dimensions when required or toggled) */}
+              {(() => {
+                const currentProd = products.find((p) => p.id === walkinSelectedProduct);
+                const reqDims = productRequiresDimensions(currentProd);
+                const shouldShow = reqDims || showCustomDimensions;
+
+                if (shouldShow) {
+                  return (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                        <div className="flex items-center justify-between mb-1">
+                          <label className="block text-xs font-bold text-slate-700 uppercase">
+                            Dimensions / Size {reqDims ? '*' : ''}
+                          </label>
+                          {!reqDims && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setShowCustomDimensions(false);
+                                setWalkinDimensions('');
+                              }}
+                              className="text-[10px] text-slate-400 hover:text-rose-600 font-semibold"
+                            >
+                              ✕ Remove
+                            </button>
+                          )}
+                        </div>
+                        <input
+                          type="text"
+                          value={walkinDimensions}
+                          onChange={(e) => setWalkinDimensions(e.target.value)}
+                          placeholder="e.g. 10x4 ft / 5x3 ft"
+                          className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg focus:outline-none focus:border-dp-navy"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Material Specification</label>
+                        <input
+                          type="text"
+                          value={walkinMaterial}
+                          onChange={(e) => setWalkinMaterial(e.target.value)}
+                          placeholder={currentProd?.materials?.[0]?.name || "e.g. Star Flex 340 GSM"}
+                          className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg focus:outline-none focus:border-dp-navy"
+                        />
+                      </div>
+                    </div>
+                  );
+                }
+
+                return (
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="block text-xs font-bold text-slate-700 uppercase">
+                        Material Specification
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => setShowCustomDimensions(true)}
+                        className="text-[11px] text-blue-600 hover:text-blue-800 font-semibold hover:underline"
+                      >
+                        + Add Dimensions / Size (Optional)
+                      </button>
+                    </div>
+                    <input
+                      type="text"
+                      value={walkinMaterial}
+                      onChange={(e) => setWalkinMaterial(e.target.value)}
+                      placeholder={currentProd?.materials?.[0]?.name || "e.g. Premium White Ceramic"}
+                      className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg focus:outline-none focus:border-dp-navy"
+                    />
+                  </div>
+                );
+              })()}
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>

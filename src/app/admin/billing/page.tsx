@@ -102,6 +102,7 @@ function AdminBillingContent() {
   const [editProductTitle, setEditProductTitle] = useState('');
   const [editProductQuantity, setEditProductQuantity] = useState(1);
   const [editDimensions, setEditDimensions] = useState('');
+  const [showEditDimensions, setShowEditDimensions] = useState(false);
   const [editMaterial, setEditMaterial] = useState('');
   const [editSpecialInstructions, setEditSpecialInstructions] = useState('');
   const [editSubtotal, setEditSubtotal] = useState(0);
@@ -366,6 +367,7 @@ function AdminBillingContent() {
     );
     setEditProductQuantity(firstItem?.quantity || inv.items?.[0]?.quantity || 1);
     setEditDimensions(dims);
+    setShowEditDimensions(Boolean(dims));
     setEditMaterial(mat);
     setEditSpecialInstructions(
       firstItem?.specialInstructions
@@ -1290,32 +1292,68 @@ function AdminBillingContent() {
                       />
                     </div>
                   </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-[11px] font-bold text-slate-700 mb-1">
-                        Dimensions / Size
-                      </label>
-                      <input
-                        type="text"
-                        value={editDimensions}
-                        onChange={(e) => setEditDimensions(e.target.value)}
-                        placeholder="e.g. 5x3 ft, A4, 12x18 inches, XL"
-                        className="w-full px-3 py-2 border border-slate-200 rounded-xl focus:outline-none focus:border-dp-navy bg-white"
-                      />
+                  {showEditDimensions || editDimensions ? (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <div className="flex items-center justify-between mb-1">
+                          <label className="block text-[11px] font-bold text-slate-700">
+                            Dimensions / Size
+                          </label>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setShowEditDimensions(false);
+                              setEditDimensions('');
+                            }}
+                            className="text-[10px] text-slate-400 hover:text-rose-600 font-semibold"
+                          >
+                            ✕ Remove
+                          </button>
+                        </div>
+                        <input
+                          type="text"
+                          value={editDimensions}
+                          onChange={(e) => setEditDimensions(e.target.value)}
+                          placeholder="e.g. 5x3 ft, A4, 12x18 inches, XL"
+                          className="w-full px-3 py-2 border border-slate-200 rounded-xl focus:outline-none focus:border-dp-navy bg-white"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                          Material Specification
+                        </label>
+                        <input
+                          type="text"
+                          value={editMaterial}
+                          onChange={(e) => setEditMaterial(e.target.value)}
+                          placeholder="e.g. Frontlit Flex, 220 GSM Cotton, Star Flex"
+                          className="w-full px-3 py-2 border border-slate-200 rounded-xl focus:outline-none focus:border-dp-navy bg-white"
+                        />
+                      </div>
                     </div>
+                  ) : (
                     <div>
-                      <label className="block text-[11px] font-bold text-slate-700 mb-1">
-                        Material Specification
-                      </label>
+                      <div className="flex items-center justify-between mb-1">
+                        <label className="block text-[11px] font-bold text-slate-700">
+                          Material Specification
+                        </label>
+                        <button
+                          type="button"
+                          onClick={() => setShowEditDimensions(true)}
+                          className="text-[11px] text-blue-600 hover:text-blue-800 font-semibold hover:underline"
+                        >
+                          + Add Dimensions / Size (Optional)
+                        </button>
+                      </div>
                       <input
                         type="text"
                         value={editMaterial}
                         onChange={(e) => setEditMaterial(e.target.value)}
-                        placeholder="e.g. Frontlit Flex, 220 GSM Cotton, Star Flex"
+                        placeholder="e.g. Premium White Ceramic, 300 GSM Art Card"
                         className="w-full px-3 py-2 border border-slate-200 rounded-xl focus:outline-none focus:border-dp-navy bg-white"
                       />
                     </div>
-                  </div>
+                  )}
                   <div>
                     <label className="block text-[11px] font-bold text-slate-700 mb-1">
                       Finishing & Special Instructions

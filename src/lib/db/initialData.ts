@@ -83,6 +83,7 @@ export const initialProducts: Product[] = [
     description: 'High-grade 11oz ceramic mug with vibrant dye-sublimation print. Microwave and dishwasher safe with high gloss finish.',
     shortDescription: '11oz Glossy Ceramic Mug with HD sublimation print',
     pricingType: 'fixed',
+    requiresDimensions: false,
     basePrice: 250,
     minQuantity: 1,
     images: [
@@ -112,6 +113,7 @@ export const initialProducts: Product[] = [
     description: '180 GSM 100% premium combed bio-washed cotton. Printed using high-resolution DTF (Direct to Film) technology for vivid, crack-proof prints.',
     shortDescription: '180 GSM 100% Cotton with vibrant crack-resistant DTF print',
     pricingType: 'fixed',
+    requiresDimensions: false,
     basePrice: 380,
     minQuantity: 1,
     images: [
@@ -142,6 +144,7 @@ export const initialProducts: Product[] = [
     description: 'Weatherproof all-season flex banner printed with UV solvent inks. High tensile strength, tear resistant, ideal for shopfronts, events, and hoardings.',
     shortDescription: 'Weatherproof heavy-duty outdoor banner printing',
     pricingType: 'sqft',
+    requiresDimensions: true,
     basePrice: 28, // Default rate per sq.ft.
     minQuantity: 1,
     minBillableArea: 10, // 10 sq.ft minimum
@@ -173,6 +176,7 @@ export const initialProducts: Product[] = [
     description: 'Precision contour-cut waterproof vinyl stickers. High adhesive strength, UV laminated to withstand sun, rain, and scratching. Perfect for vehicles and packaging.',
     shortDescription: 'Custom waterproof vinyl decals with precision contour cut',
     pricingType: 'sqft',
+    requiresDimensions: true,
     basePrice: 50,
     minQuantity: 1,
     minBillableArea: 4,
@@ -203,6 +207,7 @@ export const initialProducts: Product[] = [
     description: '350 GSM premium art card with velvety soft-touch matte lamination. Clean sharp offset printing that leaves an unforgettable professional impression.',
     shortDescription: '350 GSM Soft-Touch Matte Visiting Cards',
     pricingType: 'fixed',
+    requiresDimensions: false,
     basePrice: 350,
     minQuantity: 1,
     images: [
@@ -232,6 +237,7 @@ export const initialProducts: Product[] = [
     description: 'Full creative brand development by our senior graphic designers. Includes 3 unique logo concepts, unlimited revisions, high-res vectors, colour palettes, and typography guidelines.',
     shortDescription: 'Comprehensive corporate logo design with vector master files',
     pricingType: 'fixed',
+    requiresDimensions: false,
     basePrice: 1800,
     minQuantity: 1,
     images: [
@@ -258,6 +264,7 @@ export const initialProducts: Product[] = [
     description: 'Complete portable promotional display unit. Includes high-resolution non-tearable synthetic banner with silver anodized aluminum cassette and carry bag.',
     shortDescription: 'Portable 6x3 ft aluminum base standee with non-tear vinyl',
     pricingType: 'fixed',
+    requiresDimensions: false,
     basePrice: 1450,
     minQuantity: 1,
     images: [
@@ -283,6 +290,7 @@ export const initialProducts: Product[] = [
     description: 'Museum-grade optical crystal clear acrylic frame. 20mm thickness, direct UV flatbed printed on the back creating a stunning 3D glass-like depth effect.',
     shortDescription: '20mm thick crystal-clear acrylic desktop photo block',
     pricingType: 'fixed',
+    requiresDimensions: false,
     basePrice: 650,
     minQuantity: 1,
     images: [

@@ -17,6 +17,7 @@ export default function AdminProductsPage() {
   const [categoryId, setCategoryId] = useState('');
   const [description, setDescription] = useState('');
   const [pricingType, setPricingType] = useState<'fixed' | 'sqft'>('fixed');
+  const [requiresDimensions, setRequiresDimensions] = useState(false);
   const [basePrice, setBasePrice] = useState<number>(100);
   const [minQuantity, setMinQuantity] = useState<number>(1);
   const [minBillableArea, setMinBillableArea] = useState<number>(5);
@@ -53,6 +54,7 @@ export default function AdminProductsPage() {
     setName('');
     setDescription('');
     setPricingType('fixed');
+    setRequiresDimensions(false);
     setBasePrice(250);
     setMinQuantity(1);
     setMinBillableArea(5);
@@ -66,6 +68,7 @@ export default function AdminProductsPage() {
     setCategoryId(p.categoryId);
     setDescription(p.description);
     setPricingType(p.pricingType);
+    setRequiresDimensions(Boolean(p.requiresDimensions ?? p.pricingType === 'sqft'));
     setBasePrice(p.basePrice);
     setMinQuantity(p.minQuantity);
     setMinBillableArea(p.minBillableArea || 5);
@@ -81,6 +84,7 @@ export default function AdminProductsPage() {
       categoryId,
       description: description.trim(),
       pricingType,
+      requiresDimensions: Boolean(requiresDimensions),
       basePrice: Number(basePrice),
       minQuantity: Number(minQuantity),
       minBillableArea: pricingType === 'sqft' ? Number(minBillableArea) : undefined,
@@ -274,13 +278,35 @@ export default function AdminProductsPage() {
                   <label className="block font-bold text-slate-700 uppercase mb-1">Pricing Model *</label>
                   <select
                     value={pricingType}
-                    onChange={(e: any) => setPricingType(e.target.value)}
+                    onChange={(e: any) => {
+                      const newType = e.target.value as 'fixed' | 'sqft';
+                      setPricingType(newType);
+                      setRequiresDimensions(newType === 'sqft');
+                    }}
                     className="w-full px-3 py-2 border border-slate-200 rounded-lg bg-white font-bold"
                   >
                     <option value="fixed">Fixed Unit Price (Mugs, T-Shirts, Cards)</option>
                     <option value="sqft">Square Feet Pricing (Flex, Vinyl, Banners)</option>
                   </select>
                 </div>
+              </div>
+
+              {/* Dimension requirement checkbox */}
+              <div className="bg-slate-50 p-2.5 rounded-lg border border-slate-200">
+                <label className="flex items-center gap-2 cursor-pointer text-xs font-bold text-slate-800">
+                  <input
+                    type="checkbox"
+                    checked={requiresDimensions}
+                    onChange={(e) => setRequiresDimensions(e.target.checked)}
+                    className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500"
+                  />
+                  <span>Requires Dimensions / Size Input (e.g. Width × Height for Banners, Vinyl, Boards)</span>
+                </label>
+                <p className="text-[11px] text-slate-500 mt-0.5 ml-6">
+                  {requiresDimensions
+                    ? '✓ Dimensions input will be shown when taking orders for this product.'
+                    : '✕ Dimensions will be hidden for this product (standard items like Mugs, Cards, Apparel).'}
+                </p>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
