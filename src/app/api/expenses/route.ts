@@ -47,6 +47,22 @@ export async function POST(req: Request) {
   }
 }
 
+export async function PATCH(req: Request) {
+  try {
+    const body = await req.json();
+    if (!body.id || !body.paymentStatus) {
+      return NextResponse.json({ success: false, error: 'Expense id and paymentStatus are required' }, { status: 400 });
+    }
+    const updated = db.updateExpenseStatus(body.id, body.paymentStatus, body.paymentMethod);
+    if (!updated) {
+      return NextResponse.json({ success: false, error: 'Expense not found' }, { status: 404 });
+    }
+    return NextResponse.json({ success: true, expense: updated });
+  } catch (error: any) {
+    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+  }
+}
+
 export async function DELETE(req: Request) {
   try {
     const { searchParams } = new URL(req.url);

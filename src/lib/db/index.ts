@@ -1026,6 +1026,22 @@ export const db = {
     return false;
   },
 
+  updateExpenseStatus(
+    id: string,
+    paymentStatus: 'Paid' | 'Unpaid' | 'Pending',
+    paymentMethod?: 'Cash' | 'Offline UPI' | 'Bank Transfer'
+  ): Expense | null {
+    const data = ensureDatabase();
+    const idx = data.expenses.findIndex((e) => e.id === id);
+    if (idx === -1) return null;
+    data.expenses[idx].paymentStatus = paymentStatus;
+    if (paymentMethod) {
+      data.expenses[idx].paymentMethod = paymentMethod;
+    }
+    saveDatabase(data);
+    return data.expenses[idx];
+  },
+
   // ENQUIRIES
   getEnquiries(): Enquiry[] {
     const data = ensureDatabase();
@@ -1107,6 +1123,10 @@ export const db = {
     const totalExpenses = expenses.reduce((sum, e) => sum + e.amount, 0);
     const vendorOutstanding = vendors.reduce((sum, v) => sum + v.outstandingBalance, 0);
     const labourOutstanding = labour.reduce((sum, l) => sum + l.pendingAmount, 0);
+    const pendingExpenses = expenses
+      .filter((e) => e.paymentStatus === 'Pending' || e.paymentStatus === 'Unpaid')
+      .reduce((sum, e) => sum + e.amount, 0);
+    const totalLiabilities = vendorOutstanding + labourOutstanding + pendingExpenses;
 
     // Job Direct Costs
     const tasks = data.productionTasks;
@@ -1140,6 +1160,8 @@ export const db = {
       netProfit,
       vendorOutstanding,
       labourOutstanding,
+      pendingExpenses,
+      totalLiabilities,
       recentOrders: orders.slice(0, 8),
       recentExpenses: expenses.slice(0, 6),
       recentPayments: payments.slice(0, 6),

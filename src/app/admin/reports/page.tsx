@@ -404,9 +404,12 @@ export default function AdminReportsPage() {
     .reduce((s, o) => s + getOrderFinancials(o).amountReceived, 0);
   const totalVendorLiabilities = vendors.reduce((s, v) => s + (v.outstandingBalance || 0), 0);
   const totalLabourLiabilities = labour.reduce((s, l) => s + (l.pendingAmount || 0), 0);
+  const totalPendingExpenseLiabilities = expenses
+    .filter((e) => e.paymentStatus === 'Pending' || e.paymentStatus === 'Unpaid')
+    .reduce((s, e) => s + e.amount, 0);
 
   const studioTotalAssets = totalStockValuation + totalCollections + totalReceivables;
-  const studioTotalLiabilities = totalVendorLiabilities + totalLabourLiabilities;
+  const studioTotalLiabilities = totalVendorLiabilities + totalLabourLiabilities + totalPendingExpenseLiabilities;
   const studioNetWorth = studioTotalAssets - studioTotalLiabilities;
 
   // Overall Operating Expenses & Operating Net Profit (Reconciles with Dashboard)
@@ -782,7 +785,7 @@ export default function AdminReportsPage() {
             </div>
             <span
               className="text-[11px] text-slate-400 block mt-0.5"
-              title={`Assets: ₹${studioTotalAssets.toLocaleString('en-IN')} (Stock ₹${totalStockValuation.toLocaleString('en-IN')} + Customer Dues ₹${totalReceivables.toLocaleString('en-IN')} + Collections ₹${totalCollections.toLocaleString('en-IN')}) − Liabilities: ₹${studioTotalLiabilities.toLocaleString('en-IN')} (Vendors ₹${totalVendorLiabilities.toLocaleString('en-IN')} + Staff Dues ₹${totalLabourLiabilities.toLocaleString('en-IN')})`}
+              title={`Assets: ₹${studioTotalAssets.toLocaleString('en-IN')} (Stock ₹${totalStockValuation.toLocaleString('en-IN')} + Customer Dues ₹${totalReceivables.toLocaleString('en-IN')} + Collections ₹${totalCollections.toLocaleString('en-IN')}) − Liabilities: ₹${studioTotalLiabilities.toLocaleString('en-IN')} (Vendors ₹${totalVendorLiabilities.toLocaleString('en-IN')} + Staff Dues ₹${totalLabourLiabilities.toLocaleString('en-IN')} + Pending Expenses ₹${totalPendingExpenseLiabilities.toLocaleString('en-IN')})`}
             >
               Assets ₹{studioTotalAssets.toLocaleString('en-IN')} − Liab. ₹{studioTotalLiabilities.toLocaleString('en-IN')}
             </span>

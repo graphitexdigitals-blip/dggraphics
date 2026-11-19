@@ -732,6 +732,19 @@
       "materialId": "mat-1795105905502",
       "notes": "Cash bill #4829 (Auto-recorded from Inventory: LAM-GLOSS-30)",
       "createdAt": "2026-11-19T16:31:45.502Z"
+    },
+    {
+      "id": "exp-sal-emp-1795097201466-2026-11",
+      "date": "2026-11-19",
+      "category": "Labour Charges",
+      "description": "Wages / Salary paid to racchu for 2026-11",
+      "amount": 13846,
+      "paymentStatus": "Paid",
+      "paymentMethod": "Cash",
+      "labourId": "emp-1795097201466",
+      "labourName": "racchu",
+      "notes": "Marked Paid in Attendance & Wage Register for 2026-11.",
+      "createdAt": "2026-11-19T17:05:51.966Z"
     }
   ],
   "enquiries": [],
@@ -837,7 +850,18 @@
       "createdAt": "2026-11-19T15:15:13.804Z"
     }
   ],
-  "salaryPayments": [],
+  "salaryPayments": [
+    {
+      "id": "sal-emp-1795097201466-2026-11",
+      "labourId": "emp-1795097201466",
+      "labourName": "racchu",
+      "month": "2026-11",
+      "status": "Paid",
+      "amount": 13846,
+      "paymentMethod": "Cash",
+      "paidAt": "2026-11-19T17:05:51.964Z"
+    }
+  ],
   "settings": {
     "businessName": "DG graphics",
     "tagline": "Professional Printing & Graphic Design Studio",

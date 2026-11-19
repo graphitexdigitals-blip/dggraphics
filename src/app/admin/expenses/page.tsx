@@ -21,6 +21,7 @@ import {
   DollarSign,
   AlertCircle,
   FileDown,
+  Clock,
 } from 'lucide-react';
 
 export default function AdminExpensesPage() {
@@ -56,8 +57,10 @@ export default function AdminExpensesPage() {
   const [amount, setAmount] = useState<string>('');
   const [jobNumber, setJobNumber] = useState('');
   const [paymentMethod, setPaymentMethod] = useState<'Cash' | 'Offline UPI' | 'Bank Transfer'>('Cash');
+  const [paymentStatus, setPaymentStatus] = useState<'Paid' | 'Pending'>('Paid');
   const [expenseDate, setExpenseDate] = useState(new Date().toISOString().split('T')[0]);
   const [notes, setNotes] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'Paid' | 'Pending'>('all');
 
   // Vendor Selection State
   const [selectedVendorId, setSelectedVendorId] = useState('');
@@ -154,7 +157,7 @@ export default function AdminExpensesPage() {
           date: expenseDate,
           jobNumber: jobNumber.trim() || undefined,
           paymentMethod,
-          paymentStatus: 'Paid',
+          paymentStatus,
           notes: notes.trim(),
           vendorId: chosenVendor ? chosenVendor.id : undefined,
           vendorName: chosenVendor ? chosenVendor.name : undefined,
@@ -168,10 +171,30 @@ export default function AdminExpensesPage() {
         setJobNumber('');
         setNotes('');
         setSelectedVendorId('');
+        setPaymentStatus('Paid');
         setShowAddVendor(false);
         loadData();
       } else {
         alert('Failed to record expense: ' + (data.error || 'Server error'));
+      }
+    } catch (err: any) {
+      alert('Error: ' + err.message);
+    }
+  };
+
+  // Toggle Payment Status (Paid <-> Pending)
+  const handleTogglePaymentStatus = async (id: string, newStatus: 'Paid' | 'Pending') => {
+    try {
+      const res = await fetch('/api/expenses', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, paymentStatus: newStatus }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        loadData();
+      } else {
+        alert('Failed to update payment status: ' + (data.error || 'Server error'));
       }
     } catch (err: any) {
       alert('Error: ' + err.message);
@@ -208,6 +231,13 @@ export default function AdminExpensesPage() {
   const filtered = expenses.filter((e) => {
     if (categoryFilter && e.category !== categoryFilter) return false;
 
+    // Payment Status Filter (Paid vs Pending Liabilities)
+    if (statusFilter !== 'all') {
+      const isPending = e.paymentStatus === 'Pending' || e.paymentStatus === 'Unpaid';
+      if (statusFilter === 'Pending' && !isPending) return false;
+      if (statusFilter === 'Paid' && isPending) return false;
+    }
+
     // Date & Calendar Filtering
     if (dateFilterType === 'today' && e.date !== todayStr) return false;
     if (dateFilterType === 'this_month' && !e.date.startsWith(currentMonthStr)) return false;
@@ -229,7 +259,8 @@ export default function AdminExpensesPage() {
       const matchCat = e.category.toLowerCase().includes(q);
       const matchMethod = e.paymentMethod.toLowerCase().includes(q);
       const matchVendor = (e.vendorName || '').toLowerCase().includes(q);
-      if (!matchDesc && !matchNotes && !matchJob && !matchCat && !matchMethod && !matchVendor) {
+      const matchStatus = (e.paymentStatus || '').toLowerCase().includes(q);
+      if (!matchDesc && !matchNotes && !matchJob && !matchCat && !matchMethod && !matchVendor && !matchStatus) {
         return false;
       }
     }
@@ -256,6 +287,14 @@ export default function AdminExpensesPage() {
     .filter((e) => !['Material Purchase', 'Vendor Payment', 'Labour Charges'].includes(e.category))
     .reduce((s, e) => s + e.amount, 0);
 
+  // Pending Liabilities (Unpaid Expenses)
+  const pendingExpensesTotal = expenses
+    .filter((e) => e.paymentStatus === 'Pending' || e.paymentStatus === 'Unpaid')
+    .reduce((s, e) => s + e.amount, 0);
+
+  const pendingExpensesCount = expenses
+    .filter((e) => e.paymentStatus === 'Pending' || e.paymentStatus === 'Unpaid').length;
+
   const allGrandTotal = expenses.reduce((s, e) => s + e.amount, 0);
 
   // Category helper for badges
@@ -281,7 +320,7 @@ export default function AdminExpensesPage() {
       {/* ========================================================= */}
       {/* REAL-TIME CALCULATION & FINANCIAL BREAKDOWN CARDS */}
       {/* ========================================================= */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-2.5">
         {/* Total Outflows */}
         <div className="bg-white p-3.5 rounded-lg border border-slate-200 shadow-xs">
           <span className="text-[11px] font-medium uppercase tracking-wider text-slate-500 block">
@@ -356,6 +395,24 @@ export default function AdminExpensesPage() {
           </div>
           <div className="text-[11px] text-slate-400 mt-0.5">
             {allGrandTotal > 0 ? `${Math.round((overheadsTotal / allGrandTotal) * 100)}% of total` : '0%'}
+          </div>
+        </div>
+
+        {/* Pending Liabilities (Due Bills) */}
+        <div className={`p-3.5 rounded-lg border shadow-xs transition ${
+          pendingExpensesTotal > 0 ? 'bg-amber-50/70 border-amber-300' : 'bg-white border-slate-200'
+        }`}>
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-amber-800">
+              Pending Liabilities
+            </span>
+            <Clock className={`w-3.5 h-3.5 ${pendingExpensesTotal > 0 ? 'text-amber-600 animate-pulse' : 'text-slate-400'}`} />
+          </div>
+          <div className={`text-xl font-bold mt-1 ${pendingExpensesTotal > 0 ? 'text-amber-900' : 'text-slate-800'}`}>
+            ₹{pendingExpensesTotal.toLocaleString('en-IN')}
+          </div>
+          <div className="text-[11px] text-amber-700/90 mt-0.5 font-medium">
+            {pendingExpensesCount > 0 ? `${pendingExpensesCount} unpaid dues` : 'All expenses settled'}
           </div>
         </div>
       </div>
@@ -578,12 +635,62 @@ export default function AdminExpensesPage() {
       {/* DETAILED EXPENSE LEDGER TABLE (ADMINLTE 4) */}
       {/* ========================================================= */}
       <div className="bg-white rounded-lg border border-slate-200 shadow-xs overflow-hidden">
-        <div className="px-4 py-3 border-b border-slate-200 flex items-center justify-between bg-white">
-          <div className="flex items-center gap-2">
+        <div className="px-4 py-3 border-b border-slate-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-white">
+          <div className="flex flex-wrap items-center gap-2">
             <span className="font-semibold text-sm text-slate-800">Expenditure Ledger</span>
             <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 border border-slate-200">
               {filtered.length} entries
             </span>
+            {/* Payment Status Filter Pills */}
+            <div className="inline-flex items-center bg-slate-100 p-0.5 rounded-lg text-xs font-medium border border-slate-200 sm:ml-2">
+              <button
+                type="button"
+                onClick={() => setStatusFilter('all')}
+                className={`px-2.5 py-1 rounded-md transition text-xs ${
+                  statusFilter === 'all'
+                    ? 'bg-white text-slate-900 font-bold shadow-2xs'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                All ({expenses.length})
+              </button>
+              <button
+                type="button"
+                onClick={() => setStatusFilter('Paid')}
+                className={`px-2.5 py-1 rounded-md transition text-xs flex items-center gap-1.5 ${
+                  statusFilter === 'Paid'
+                    ? 'bg-emerald-600 text-white font-bold shadow-2xs'
+                    : 'text-slate-600 hover:text-emerald-700'
+                }`}
+              >
+                <span>🟢 Paid</span>
+                <span className="text-[10px] opacity-80">
+                  ({expenses.filter((e) => e.paymentStatus !== 'Pending' && e.paymentStatus !== 'Unpaid').length})
+                </span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setStatusFilter('Pending')}
+                className={`px-2.5 py-1 rounded-md transition text-xs flex items-center gap-1.5 ${
+                  statusFilter === 'Pending'
+                    ? 'bg-amber-600 text-white font-bold shadow-2xs'
+                    : 'text-slate-600 hover:text-amber-700'
+                }`}
+              >
+                <span>⏳ Pending / Liabilities</span>
+                {pendingExpensesCount > 0 && (
+                  <span
+                    className={`text-[10px] px-1.5 py-0.2 rounded-full font-black ${
+                      statusFilter === 'Pending'
+                        ? 'bg-white text-amber-900'
+                        : 'bg-amber-200 text-amber-900'
+                    }`}
+                  >
+                    {pendingExpensesCount}
+                  </span>
+                )}
+              </button>
+            </div>
           </div>
           <div className="flex items-center gap-2">
             <button
@@ -733,13 +840,39 @@ export default function AdminExpensesPage() {
                         )}
                       </td>
 
-                      {/* Payment Method */}
+                      {/* Payment Method & Status */}
                       <td className="py-3.5 px-4 whitespace-nowrap">
                         <div className="font-medium text-slate-700">{exp.paymentMethod}</div>
-                        <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-600">
-                          <CheckCircle2 className="w-3 h-3" />
-                          <span>{exp.paymentStatus}</span>
-                        </span>
+                        {exp.paymentStatus === 'Pending' || exp.paymentStatus === 'Unpaid' ? (
+                          <div className="mt-1 flex items-center gap-1.5">
+                            <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-800 bg-amber-100 border border-amber-300 px-2 py-0.5 rounded-full">
+                              <Clock className="w-3 h-3 text-amber-600 animate-pulse" />
+                              <span>Pending Due</span>
+                            </span>
+                            <button
+                              onClick={() => handleTogglePaymentStatus(exp.id, 'Paid')}
+                              className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 px-2 py-0.5 rounded-md transition shadow-2xs cursor-pointer"
+                              title="Mark as Paid (Settle liability)"
+                            >
+                              <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                              <span>Pay ✓</span>
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="mt-1 flex items-center gap-1.5">
+                            <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
+                              <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                              <span>Paid</span>
+                            </span>
+                            <button
+                              onClick={() => handleTogglePaymentStatus(exp.id, 'Pending')}
+                              className="text-[9px] text-slate-400 hover:text-amber-700 hover:underline transition cursor-pointer"
+                              title="Mark as Unpaid (Set as Pending Liability)"
+                            >
+                              Make Due
+                            </button>
+                          </div>
+                        )}
                       </td>
 
                       {/* Calculated Amount */}
@@ -1004,8 +1137,8 @@ export default function AdminExpensesPage() {
                 </span>
               </div>
 
-              {/* 4. Link to Customer Job Number (Optional) */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {/* 4. Link to Job, Payment Method & Payment Status */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
                   <label className="block font-semibold text-slate-700 uppercase text-[11px] mb-1">
                     Link to Job # (Optional)
@@ -1015,10 +1148,10 @@ export default function AdminExpensesPage() {
                     onChange={(e) => setJobNumber(e.target.value)}
                     className="w-full px-3 py-2 border border-slate-300 rounded-md bg-white font-mono text-xs focus:border-blue-500 focus:outline-none"
                   >
-                    <option value="">None (General Shop Cost)</option>
+                    <option value="">None (General Overhead)</option>
                     {orders.map((o) => (
                       <option key={o.id} value={o.jobNumber}>
-                        {o.jobNumber} — {o.customerName} — {o.items.map((it) => it.productName).join(', ')} (Billed: ₹{o.grandTotal})
+                        {o.jobNumber} — {o.customerName} (₹{o.grandTotal})
                       </option>
                     ))}
                   </select>
@@ -1031,14 +1164,45 @@ export default function AdminExpensesPage() {
                   <select
                     value={paymentMethod}
                     onChange={(e: any) => setPaymentMethod(e.target.value)}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-md bg-white font-medium focus:border-blue-500 focus:outline-none"
+                    className="w-full px-3 py-2 border border-slate-300 rounded-md bg-white font-medium text-xs focus:border-blue-500 focus:outline-none"
                   >
                     <option value="Cash">Cash (Shop Register)</option>
                     <option value="Offline UPI">Offline UPI (Shop QR)</option>
                     <option value="Bank Transfer">Bank Transfer / NEFT</option>
                   </select>
                 </div>
+
+                <div>
+                  <label className="block font-semibold text-slate-700 uppercase text-[11px] mb-1">
+                    Payment Status *
+                  </label>
+                  <select
+                    value={paymentStatus}
+                    onChange={(e: any) => setPaymentStatus(e.target.value)}
+                    className={`w-full px-3 py-2 border rounded-md font-bold text-xs focus:outline-none ${
+                      paymentStatus === 'Pending'
+                        ? 'border-amber-400 bg-amber-50 text-amber-900 focus:border-amber-500'
+                        : 'border-emerald-300 bg-emerald-50 text-emerald-900 focus:border-emerald-500'
+                    }`}
+                  >
+                    <option value="Paid">🟢 Paid (Settled)</option>
+                    <option value="Pending">⏳ Pending / Due (Credit Liability)</option>
+                  </select>
+                </div>
               </div>
+
+              {/* Informative Callout when Pending / Due Liability is chosen */}
+              {paymentStatus === 'Pending' && (
+                <div className="bg-amber-50 border border-amber-200 text-amber-900 rounded-md p-2.5 flex items-start gap-2 text-xs">
+                  <Clock className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                  <div>
+                    <strong className="font-bold">Tracked under Studio Liabilities:</strong>
+                    <p className="text-[11px] text-amber-800 mt-0.5">
+                      This unpaid expense {amount ? `(₹${parseFloat(amount).toLocaleString('en-IN')})` : ''} will be logged as an outstanding liability in Studio Net Worth until marked Paid. You can settle it anytime with 1-click in the Expenditure Ledger.
+                    </p>
+                  </div>
+                </div>
+              )}
 
               {/* Date */}
               <div>
@@ -1145,33 +1309,69 @@ export default function AdminExpensesPage() {
                 </div>
                 <div className="text-right">
                   <span className="text-[10px] font-bold uppercase text-slate-400 block">Status</span>
-                  <span className="text-emerald-700 font-bold bg-emerald-100 px-2 py-0.5 rounded text-[10px]">
-                    {selectedExpense.paymentStatus}
-                  </span>
+                  {selectedExpense.paymentStatus === 'Pending' || selectedExpense.paymentStatus === 'Unpaid' ? (
+                    <span className="text-amber-800 font-bold bg-amber-100 border border-amber-300 px-2 py-0.5 rounded text-[10px] inline-flex items-center gap-1">
+                      <Clock className="w-3 h-3 text-amber-600" />
+                      <span>Pending Due (Liability)</span>
+                    </span>
+                  ) : (
+                    <span className="text-emerald-700 font-bold bg-emerald-100 px-2 py-0.5 rounded text-[10px] inline-flex items-center gap-1">
+                      <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                      <span>Settled / Paid</span>
+                    </span>
+                  )}
                 </div>
               </div>
             </div>
 
-            <div className="pt-3 border-t border-slate-100 flex justify-end gap-2">
-              <button
-                type="button"
-                onClick={() => {
-                  const id = selectedExpense.id;
-                  const desc = selectedExpense.description;
-                  handleDelete(id, desc);
-                }}
-                className="px-3 py-2 text-rose-600 hover:bg-rose-50 rounded-xl font-bold transition flex items-center gap-1.5"
-              >
-                <Trash2 className="w-4 h-4" />
-                <span>Delete</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setSelectedExpense(null)}
-                className="px-4 py-2 bg-slate-900 text-white rounded-xl font-bold transition"
-              >
-                Close
-              </button>
+            <div className="pt-3 border-t border-slate-100 flex items-center justify-between gap-2">
+              <div>
+                {selectedExpense.paymentStatus === 'Pending' || selectedExpense.paymentStatus === 'Unpaid' ? (
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      await handleTogglePaymentStatus(selectedExpense.id, 'Paid');
+                      setSelectedExpense((prev) => prev ? { ...prev, paymentStatus: 'Paid' } : null);
+                    }}
+                    className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold transition flex items-center gap-1.5 shadow-xs cursor-pointer"
+                  >
+                    <CheckCircle2 className="w-4 h-4" />
+                    <span>Mark as Paid ✓</span>
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      await handleTogglePaymentStatus(selectedExpense.id, 'Pending');
+                      setSelectedExpense((prev) => prev ? { ...prev, paymentStatus: 'Pending' } : null);
+                    }}
+                    className="px-2.5 py-1 text-slate-500 hover:text-amber-700 hover:bg-amber-50 rounded-lg text-xs font-semibold transition"
+                  >
+                    Mark as Pending Due
+                  </button>
+                )}
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const id = selectedExpense.id;
+                    const desc = selectedExpense.description;
+                    handleDelete(id, desc);
+                  }}
+                  className="px-3 py-2 text-rose-600 hover:bg-rose-50 rounded-xl font-bold transition flex items-center gap-1.5"
+                >
+                  <Trash2 className="w-4 h-4" />
+                  <span>Delete</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSelectedExpense(null)}
+                  className="px-4 py-2 bg-slate-900 text-white rounded-xl font-bold transition"
+                >
+                  Close
+                </button>
+              </div>
             </div>
           </div>
         </div>
