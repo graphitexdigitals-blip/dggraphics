@@ -50,6 +50,8 @@ export async function POST(req: Request) {
       minStockAlert: Number(body.minStockAlert) || 5,
       vendorId: body.vendorId,
       vendorName: body.vendorName,
+      supplierType: body.supplierType,
+      supplierNotes: body.supplierNotes,
       lastPurchaseDate: body.lastPurchaseDate || new Date().toISOString().split('T')[0],
     });
 

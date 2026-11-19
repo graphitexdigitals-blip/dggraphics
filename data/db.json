@@ -484,12 +484,135 @@
       "turnaroundTime": "2 Days"
     }
   ],
-  "customers": [],
-  "orders": [],
-  "productionTasks": [],
-  "vendors": [],
+  "customers": [
+    {
+      "id": "cust-1795104814226",
+      "name": "Ramu",
+      "phone": "948123568",
+      "whatsapp": "948123568",
+      "email": "",
+      "address": "",
+      "pincode": "",
+      "firstOrderDate": "2026-11-19T16:13:34.220Z",
+      "totalOrders": 1,
+      "totalBilled": 400,
+      "totalPaid": 200,
+      "outstandingBalance": 200,
+      "createdAt": "2026-11-19T16:13:34.220Z"
+    }
+  ],
+  "orders": [
+    {
+      "source": "walk_in",
+      "customerId": "cust-1795104814226",
+      "customerName": "Ramu",
+      "customerPhone": "948123568",
+      "customerWhatsapp": "948123568",
+      "customerEmail": "",
+      "deliveryMethod": "shop_collection",
+      "deliveryAddress": "",
+      "deliveryPincode": "",
+      "items": [
+        {
+          "id": "item-1795104814157",
+          "productId": "prod-2",
+          "productName": "Custom Printed Bio-Washed Cotton T-Shirt",
+          "pricingType": "fixed",
+          "quantity": 1,
+          "material": "180 GSM Bio-Washed Single Jersey",
+          "specialInstructions": "",
+          "totalPrice": 200
+        }
+      ],
+      "subtotal": 200,
+      "designCharges": 200,
+      "additionalCharges": 0,
+      "discount": 0,
+      "deliveryCharges": 0,
+      "grandTotal": 400,
+      "advancePaid": 200,
+      "balanceDue": 200,
+      "orderStatus": "Printing Completed",
+      "paymentStatus": "Partially Paid",
+      "productionMethod": "in_house",
+      "expectedCompletionDate": "2026-11-27",
+      "internalNotes": "",
+      "customerNotes": "",
+      "id": "ord-1795104814223",
+      "jobNumber": "JOB-2026-0001",
+      "createdAt": "2026-11-19T16:13:34.220Z",
+      "updatedAt": "2026-11-19T16:24:02.622Z"
+    }
+  ],
+  "productionTasks": [
+    {
+      "id": "pt-1795104814228-0",
+      "orderId": "ord-1795104814223",
+      "jobNumber": "JOB-2026-0001",
+      "taskName": "Custom Printed Bio-Washed Cotton T-Shirt Production",
+      "type": "in_house",
+      "materialCost": 0,
+      "labourCost": 0,
+      "vendorCost": 0,
+      "status": "Pending",
+      "notes": "Produce according to dimensions/artwork."
+    }
+  ],
+  "vendors": [
+    {
+      "id": "vend-1795104968969",
+      "name": "Ranga",
+      "businessName": "Ranga Tshirts",
+      "phone": "9865412365",
+      "whatsapp": "9865412365",
+      "email": "",
+      "address": "mangalore",
+      "category": "Apparel Screenprint",
+      "servicesProvided": [
+        "Catalogues",
+        "Booklets",
+        "Packaging"
+      ],
+      "totalWorkAssigned": 0,
+      "totalPaid": 0,
+      "outstandingBalance": 0,
+      "createdAt": "2026-11-19T16:16:08.969Z"
+    }
+  ],
   "vendorWorkOrders": [],
-  "materials": [],
+  "materials": [
+    {
+      "id": "mat-1795105847261",
+      "name": "Round Neck Cotton T-Shirt",
+      "sku": "TSHIRT-BLK-100",
+      "category": "T-Shirts",
+      "unit": "pcs",
+      "purchasePrice": 199,
+      "usageCostPerUnit": 199,
+      "stockQuantity": 100,
+      "minStockAlert": 5,
+      "vendorId": "vend-1795104968969",
+      "vendorName": "Ranga Tshirts (Ranga)",
+      "supplierType": "registered_vendor",
+      "supplierNotes": "Lot #1",
+      "lastPurchaseDate": "2026-11-19"
+    },
+    {
+      "id": "mat-1795105905502",
+      "name": "Glossy Lamination Film",
+      "sku": "LAM-GLOSS-30",
+      "category": "Flex Rolls",
+      "unit": "roll",
+      "purchasePrice": 1200,
+      "usageCostPerUnit": 1200,
+      "stockQuantity": 3,
+      "minStockAlert": 5,
+      "vendorName": "City Market Wholesale (Shop #12)",
+      "supplierType": "unregistered_shop",
+      "supplierNotes": "Cash bill #4829",
+      "lastPurchaseDate": "2026-11-19"
+    }
+  ],
   "materialConsumptions": [],
   "labour": [
     {
@@ -507,8 +630,51 @@
     }
   ],
   "labourTransactions": [],
-  "invoices": [],
-  "payments": [],
+  "invoices": [
+    {
+      "id": "inv-1795104814227",
+      "invoiceNumber": "INV-2026-0001",
+      "orderId": "ord-1795104814223",
+      "jobNumber": "JOB-2026-0001",
+      "customerId": "cust-1795104814226",
+      "customerName": "Ramu",
+      "customerPhone": "948123568",
+      "customerAddress": "",
+      "date": "2026-11-19",
+      "items": [
+        {
+          "description": "Custom Printed Bio-Washed Cotton T-Shirt (180 GSM Bio-Washed Single Jersey)",
+          "quantity": 1,
+          "unitPrice": 200,
+          "total": 200
+        }
+      ],
+      "subtotal": 200,
+      "discount": 0,
+      "tax": 0,
+      "deliveryCharges": 0,
+      "grandTotal": 400,
+      "amountPaid": 200,
+      "balanceDue": 200,
+      "paymentStatus": "Partially Paid",
+      "status": "Partially Paid",
+      "createdAt": "2026-11-19T16:13:34.220Z"
+    }
+  ],
+  "payments": [
+    {
+      "id": "pay-1795104814228",
+      "invoiceId": "inv-1795104814227",
+      "orderId": "ord-1795104814223",
+      "jobNumber": "JOB-2026-0001",
+      "customerId": "cust-1795104814226",
+      "amount": 200,
+      "paymentMethod": "Cash",
+      "notes": "Advance booking payment",
+      "date": "2026-11-19",
+      "receivedBy": "System / Counter"
+    }
+  ],
   "expenses": [],
   "enquiries": [],
   "designRevisions": [],

@@ -222,6 +222,8 @@ export interface Material {
   minStockAlert: number;
   vendorId?: string;
   vendorName?: string;
+  supplierType?: 'registered_vendor' | 'unregistered_shop';
+  supplierNotes?: string;
   lastPurchaseDate?: string;
 }
 
