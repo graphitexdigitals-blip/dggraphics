@@ -540,13 +540,9 @@ export default function AttendancePage() {
 
       if (emp.paymentType === 'fixed_salary') {
         const dailyRateCalc = emp.defaultRate / 26;
-        if (empRecords.length === 0) {
-          // Prorate by days active in start month
-          payable = Math.round(emp.defaultRate * (daysEmployed / daysInMonth));
-        } else {
-          const maxProrated = Math.round(emp.defaultRate * (daysEmployed / daysInMonth));
-          payable = Math.round(Math.min(maxProrated, effectiveDays * dailyRateCalc));
-        }
+        const baseProrated = Math.round(emp.defaultRate * (daysEmployed / daysInMonth));
+        const deductions = (absents * dailyRateCalc) + (halfDays * 0.5 * dailyRateCalc);
+        payable = Math.max(0, Math.round(baseProrated - deductions));
       } else {
         payable = Math.round(fullDays * emp.defaultRate + halfDays * emp.defaultRate * 0.5);
       }
@@ -557,12 +553,10 @@ export default function AttendancePage() {
     // 3. Normal active month
     if (emp.paymentType === 'fixed_salary') {
       const workingDaysInMonth = 26;
-      if (empRecords.length === 0) {
-        payable = emp.defaultRate; // Default to full month salary if not marked yet
-      } else {
-        const dailyRateCalc = emp.defaultRate / workingDaysInMonth;
-        payable = Math.round(Math.min(emp.defaultRate, effectiveDays * dailyRateCalc));
-      }
+      const dailyRateCalc = emp.defaultRate / workingDaysInMonth;
+      // Fixed salary: full monthly pay minus deductions for absence or half days
+      const deductions = (absents * dailyRateCalc) + (halfDays * 0.5 * dailyRateCalc);
+      payable = Math.max(0, Math.round(emp.defaultRate - deductions));
     } else {
       payable = Math.round(fullDays * emp.defaultRate + halfDays * emp.defaultRate * 0.5);
     }
@@ -1558,32 +1552,69 @@ export default function AttendancePage() {
               </div>
 
               {/* Monthly Stat Badges */}
-              <div className="grid grid-cols-2 sm:grid-cols-6 gap-2.5 text-center text-xs">
-                <div className="bg-emerald-50 border border-emerald-200 p-2.5 rounded-xl">
-                  <span className="text-[10px] uppercase font-bold text-emerald-700 block">🟢 Present (Full)</span>
-                  <span className="text-lg font-black text-emerald-800">{calStats.fullDays} Days</span>
-                </div>
-                <div className="bg-amber-50 border border-amber-200 p-2.5 rounded-xl">
-                  <span className="text-[10px] uppercase font-bold text-amber-700 block">🟡 Half Day</span>
-                  <span className="text-lg font-black text-amber-800">{calStats.halfDays} Days</span>
-                </div>
-                <div className="bg-rose-50 border border-rose-200 p-2.5 rounded-xl">
-                  <span className="text-[10px] uppercase font-bold text-rose-700 block">🔴 Absent</span>
-                  <span className="text-lg font-black text-rose-800">{calStats.absents} Days</span>
-                </div>
-                <div className="bg-slate-50 border border-slate-200 p-2.5 rounded-xl">
-                  <span className="text-[10px] uppercase font-bold text-slate-600 block">⚪ Weekly Off</span>
-                  <span className="text-lg font-black text-slate-700">{sundaysCount} Days</span>
-                </div>
-                <div className="bg-blue-50 border border-blue-200 p-2.5 rounded-xl">
-                  <span className="text-[10px] uppercase font-bold text-blue-700 block">💼 Payable Days</span>
-                  <span className="text-lg font-black text-blue-800">{calStats.effectiveDays}</span>
-                </div>
-                <div className="bg-indigo-50 border border-indigo-200 p-2.5 rounded-xl">
-                  <span className="text-[10px] uppercase font-bold text-indigo-700 block">💰 Payable Salary</span>
-                  <span className="text-lg font-black text-indigo-900">₹{calStats.payable.toLocaleString('en-IN')}</span>
-                </div>
-              </div>
+              {(() => {
+                const todayStr = new Date().toISOString().split('T')[0];
+                let calPresentCount = 0;
+                let calHalfCount = 0;
+                let calAbsentCount = 0;
+                let calSundayCount = 0;
+                let calUpcomingCount = 0;
+                let calPreJoiningCount = 0;
+
+                for (let d = 1; d <= daysInMonth; d++) {
+                  const dStr = `${selectedYear}-${selectedMonth}-${String(d).padStart(2, '0')}`;
+                  const dayOfWeek = new Date(yearNum, monthNum - 1, d).getDay();
+                  const isSun = dayOfWeek === 0;
+                  const isBefore = Boolean(calEmp.startDate && dStr < calEmp.startDate);
+                  const rec = attendances.find((a) => a.labourId === calEmp.id && a.date === dStr);
+
+                  if (isBefore) {
+                    calPreJoiningCount++;
+                  } else if (rec) {
+                    if (rec.status === 'full_day') calPresentCount++;
+                    else if (rec.status === 'half_day') calHalfCount++;
+                    else if (rec.status === 'absent') calAbsentCount++;
+                    else if (rec.status === 'holiday') calSundayCount++;
+                  } else if (isSun) {
+                    calSundayCount++;
+                  } else if (dStr > todayStr) {
+                    calUpcomingCount++;
+                  } else {
+                    if (isPerm) {
+                      calPresentCount++;
+                    }
+                  }
+                }
+
+                return (
+                  <div className="grid grid-cols-2 sm:grid-cols-6 gap-2.5 text-center text-xs">
+                    <div className="bg-emerald-50 border border-emerald-200 p-2.5 rounded-xl">
+                      <span className="text-[10px] uppercase font-bold text-emerald-700 block">🟢 Present (Full)</span>
+                      <span className="text-lg font-black text-emerald-800">{calPresentCount} Days</span>
+                    </div>
+                    <div className="bg-amber-50 border border-amber-200 p-2.5 rounded-xl">
+                      <span className="text-[10px] uppercase font-bold text-amber-700 block">🟡 Half Day</span>
+                      <span className="text-lg font-black text-amber-800">{calHalfCount} Days</span>
+                    </div>
+                    <div className="bg-rose-50 border border-rose-200 p-2.5 rounded-xl">
+                      <span className="text-[10px] uppercase font-bold text-rose-700 block">🔴 Absent</span>
+                      <span className="text-lg font-black text-rose-800">{calAbsentCount} Days</span>
+                    </div>
+                    <div className="bg-slate-50 border border-slate-200 p-2.5 rounded-xl">
+                      <span className="text-[10px] uppercase font-bold text-slate-600 block">⚪ Weekly Off</span>
+                      <span className="text-lg font-black text-slate-700">{calSundayCount} Days</span>
+                    </div>
+                    <div className="bg-slate-100/90 border border-slate-300 p-2.5 rounded-xl">
+                      <span className="text-[10px] uppercase font-bold text-slate-600 block">⏳ Upcoming</span>
+                      <span className="text-lg font-black text-slate-700">{calUpcomingCount} Days</span>
+                    </div>
+                    <div className="bg-indigo-50 border border-indigo-200 p-2.5 rounded-xl">
+                      <span className="text-[10px] uppercase font-bold text-indigo-700 block">💰 Payable Salary</span>
+                      <span className="text-lg font-black text-indigo-900">₹{calStats.payable.toLocaleString('en-IN')}</span>
+                    </div>
+                  </div>
+                );
+              })()}
 
               {/* Status Color Legend */}
               <div className="flex flex-wrap items-center justify-between text-[11px] font-semibold text-slate-600 bg-slate-50 p-2.5 rounded-lg border border-slate-200 gap-2">
@@ -1606,6 +1637,10 @@ export default function AttendancePage() {
                 </span>
                 <span className="flex items-center gap-1 text-slate-500">
                   <span className="w-2.5 h-2.5 rounded-full bg-slate-300 inline-block" />
+                  Upcoming (Future Date)
+                </span>
+                <span className="flex items-center gap-1 text-rose-600">
+                  <span className="w-2.5 h-2.5 rounded-full bg-rose-300 inline-block" />
                   Pre-Employment (Locked)
                 </span>
               </div>
@@ -1638,21 +1673,28 @@ export default function AttendancePage() {
                   const dayOfWeek = new Date(yearNum, monthNum - 1, dayNum).getDay();
                   const isSunday = dayOfWeek === 0;
                   const isBeforeJoining = Boolean(calEmp.startDate && dateStr < calEmp.startDate);
+                  const todayStr = new Date().toISOString().split('T')[0];
+                  const isFuture = dateStr > todayStr;
+                  const isToday = dateStr === todayStr;
                   const attRec = attendances.find((a) => a.labourId === calEmp.id && a.date === dateStr);
 
                   // Determine display status
-                  let currentDayStatus: AttendanceStatus | 'sunday_off' | 'pre_joining' = 'full_day';
+                  let currentDayStatus: AttendanceStatus | 'sunday_off' | 'pre_joining' | 'upcoming' | 'unmarked';
                   if (isBeforeJoining) {
                     currentDayStatus = 'pre_joining';
                   } else if (attRec) {
                     currentDayStatus = attRec.status;
                   } else if (isSunday) {
                     currentDayStatus = 'sunday_off';
-                  } else {
+                  } else if (isFuture) {
+                    currentDayStatus = 'upcoming';
+                  } else if (isPerm) {
                     currentDayStatus = 'full_day';
+                  } else {
+                    currentDayStatus = 'unmarked';
                   }
 
-                  // Day container color
+                  // Day container styling
                   let containerBg = 'bg-white border-slate-200';
                   let statusBadge = null;
 
@@ -1661,6 +1703,13 @@ export default function AttendancePage() {
                     statusBadge = (
                       <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-rose-100 text-rose-700 block text-center truncate">
                         🔒 Not Joined
+                      </span>
+                    );
+                  } else if (currentDayStatus === 'upcoming') {
+                    containerBg = 'bg-slate-50/70 border-dashed border-slate-300 text-slate-500 hover:border-slate-400';
+                    statusBadge = (
+                      <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-slate-200/80 text-slate-600 block text-center truncate">
+                        ⏳ Upcoming
                       </span>
                     );
                   } else if (currentDayStatus === 'full_day') {
@@ -1691,6 +1740,17 @@ export default function AttendancePage() {
                         {isSunday ? '⚪ Sunday Off' : '⚪ Holiday'}
                       </span>
                     );
+                  } else {
+                    containerBg = 'bg-slate-50 border-slate-200 text-slate-500';
+                    statusBadge = (
+                      <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-slate-200 text-slate-600 block text-center truncate">
+                        ⚪ Unmarked
+                      </span>
+                    );
+                  }
+
+                  if (isToday) {
+                    containerBg += ' ring-2 ring-blue-500 shadow-xs';
                   }
 
                   return (
@@ -1700,9 +1760,16 @@ export default function AttendancePage() {
                     >
                       {/* Top Bar: Date Number and Indicator */}
                       <div className="flex items-center justify-between">
-                        <span className={`text-xs sm:text-sm font-black ${isSunday ? 'text-rose-600' : 'text-slate-900'}`}>
-                          {dayNum}
-                        </span>
+                        <div className="flex items-center gap-1.5">
+                          <span className={`text-xs sm:text-sm font-black ${isSunday ? 'text-rose-600' : 'text-slate-900'}`}>
+                            {dayNum}
+                          </span>
+                          {isToday && (
+                            <span className="px-1 py-0.2 rounded text-[8px] font-black bg-blue-600 text-white uppercase tracking-wider shadow-xs">
+                              Today
+                            </span>
+                          )}
+                        </div>
                         {isSunday && (
                           <span className="text-[9px] font-bold text-rose-500 uppercase">Sun</span>
                         )}
@@ -1718,12 +1785,29 @@ export default function AttendancePage() {
                         <div className="text-[9px] text-rose-500 text-center font-semibold italic">
                           Starts {calEmp.startDate}
                         </div>
+                      ) : isFuture && !attRec ? (
+                        <select
+                          value="upcoming"
+                          onChange={(e) => {
+                            if (e.target.value !== 'upcoming') {
+                              handleCalendarMarkDay(calEmp, dateStr, e.target.value as AttendanceStatus);
+                            }
+                          }}
+                          className="w-full text-[9px] sm:text-[10px] font-semibold py-0.5 px-1 rounded-md border border-slate-200 bg-white/95 text-slate-600 cursor-pointer focus:outline-none hover:bg-white transition"
+                        >
+                          <option value="upcoming" disabled>⏳ Upcoming</option>
+                          <option value="full_day">🟢 Mark Present</option>
+                          <option value="half_day">🟡 Mark Half Day</option>
+                          <option value="absent">🔴 Mark Absent</option>
+                          <option value="holiday">⚪ Mark Off</option>
+                        </select>
                       ) : (
                         <select
-                          value={attRec?.status || (isSunday ? 'holiday' : 'full_day')}
+                          value={attRec?.status || (isSunday ? 'holiday' : isPerm ? 'full_day' : '')}
                           onChange={(e) => handleCalendarMarkDay(calEmp, dateStr, e.target.value as AttendanceStatus)}
                           className="w-full text-[9px] sm:text-[10px] font-bold py-0.5 px-1 rounded-md border border-slate-200 bg-white/90 text-slate-800 cursor-pointer focus:outline-none hover:bg-white transition"
                         >
+                          {!isPerm && !attRec && <option value="" disabled>⚪ Unmarked</option>}
                           <option value="full_day">🟢 Present (Full)</option>
                           <option value="half_day">🟡 Half Day</option>
                           <option value="absent">🔴 Absent</option>
