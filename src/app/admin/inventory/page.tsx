@@ -30,6 +30,11 @@ export default function AdminInventoryPage() {
   const [customVendorName, setCustomVendorName] = useState('');
   const [supplierNotes, setSupplierNotes] = useState('');
 
+  // Auto Expense State
+  const [recordExpense, setRecordExpense] = useState(true);
+  const [paymentMethod, setPaymentMethod] = useState<'Cash' | 'Offline UPI' | 'Bank Transfer'>('Cash');
+  const [paymentStatus, setPaymentStatus] = useState<'Paid' | 'Pending'>('Paid');
+
   const categoryDefaultUnits: Record<string, string> = {
     'Flex Rolls': 'roll',
     'Vinyl Rolls': 'roll',
@@ -126,6 +131,9 @@ export default function AdminInventoryPage() {
           vendorName: finalVendorName,
           supplierType: supplierType === 'registered' ? 'registered_vendor' : 'unregistered_shop',
           supplierNotes: supplierNotes.trim() || undefined,
+          recordExpense,
+          paymentMethod,
+          paymentStatus,
         }),
       });
       const data = await res.json();
@@ -556,6 +564,64 @@ export default function AdminInventoryPage() {
                   />
                 </div>
               </div>
+
+              {/* Real-time Business Expense Link Card */}
+              {purchasePrice > 0 && stockQuantity > 0 && (
+                <div className="bg-emerald-50/80 border border-emerald-200 rounded-xl p-3 space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <span className="text-[11px] font-bold text-emerald-900 block">
+                        💰 Total Purchase Cost:
+                      </span>
+                      <span className="text-sm font-black text-emerald-800">
+                        ₹{(purchasePrice * stockQuantity).toLocaleString('en-IN')}
+                      </span>
+                    </div>
+
+                    <label className="flex items-center gap-2 text-xs font-semibold text-emerald-950 cursor-pointer bg-white px-2.5 py-1.5 rounded-lg border border-emerald-300 shadow-xs hover:bg-emerald-50">
+                      <input
+                        type="checkbox"
+                        checked={recordExpense}
+                        onChange={(e) => setRecordExpense(e.target.checked)}
+                        className="rounded text-emerald-600 focus:ring-emerald-500 w-4 h-4 cursor-pointer"
+                      />
+                      <span>Auto-record in Expenses</span>
+                    </label>
+                  </div>
+
+                  {recordExpense && (
+                    <div className="grid grid-cols-2 gap-2.5 pt-2 border-t border-emerald-200 text-xs">
+                      <div>
+                        <label className="block text-[11px] font-semibold text-emerald-900 mb-1">
+                          Payment Mode
+                        </label>
+                        <select
+                          value={paymentMethod}
+                          onChange={(e: any) => setPaymentMethod(e.target.value)}
+                          className="w-full px-2 py-1.5 bg-white border border-emerald-300 rounded-lg text-xs font-medium"
+                        >
+                          <option value="Cash">Cash</option>
+                          <option value="Offline UPI">Offline UPI (GPay / PhonePe)</option>
+                          <option value="Bank Transfer">Bank Transfer / NEFT</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-[11px] font-semibold text-emerald-900 mb-1">
+                          Payment Status
+                        </label>
+                        <select
+                          value={paymentStatus}
+                          onChange={(e: any) => setPaymentStatus(e.target.value)}
+                          className="w-full px-2 py-1.5 bg-white border border-emerald-300 rounded-lg text-xs font-medium"
+                        >
+                          <option value="Paid">Paid Immediately</option>
+                          <option value="Pending">Due / Unpaid Credit</option>
+                        </select>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
 
               <div className="pt-2 flex justify-end gap-2">
                 <button

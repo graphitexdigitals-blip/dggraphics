@@ -611,6 +611,22 @@
       "supplierType": "unregistered_shop",
       "supplierNotes": "Cash bill #4829",
       "lastPurchaseDate": "2026-11-19"
+    },
+    {
+      "id": "mat-1795107313814",
+      "name": "Sublimation Ceramic White Mug",
+      "sku": "MUG-WHT-36",
+      "category": "Mug Blanks",
+      "unit": "pcs",
+      "purchasePrice": 45,
+      "usageCostPerUnit": 45,
+      "stockQuantity": 36,
+      "minStockAlert": 5,
+      "vendorId": "vend-1795104968969",
+      "vendorName": "Ranga Tshirts (Ranga)",
+      "supplierType": "registered_vendor",
+      "supplierNotes": "Box #1",
+      "lastPurchaseDate": "2026-11-19"
     }
   ],
   "materialConsumptions": [],
@@ -675,7 +691,49 @@
       "receivedBy": "System / Counter"
     }
   ],
-  "expenses": [],
+  "expenses": [
+    {
+      "id": "exp-mat-mat-1795107313814",
+      "date": "2026-11-19",
+      "category": "Material Purchase",
+      "description": "Raw Material: Sublimation Ceramic White Mug (36 pcs @ ₹45/pcs) from Ranga Tshirts (Ranga)",
+      "amount": 1620,
+      "paymentStatus": "Paid",
+      "paymentMethod": "Offline UPI",
+      "vendorId": "vend-1795104968969",
+      "vendorName": "Ranga Tshirts (Ranga)",
+      "materialId": "mat-1795107313814",
+      "notes": "Box #1 (Auto-recorded from Inventory stock entry: MUG-WHT-36)",
+      "createdAt": "2026-11-19T16:55:13.817Z"
+    },
+    {
+      "id": "exp-mat-mat-1795105847261",
+      "date": "2026-11-19",
+      "category": "Material Purchase",
+      "description": "Raw Material: Round Neck Cotton T-Shirt (100 pcs @ ₹199/pcs) from Ranga Tshirts (Ranga)",
+      "amount": 19900,
+      "paymentStatus": "Paid",
+      "paymentMethod": "Offline UPI",
+      "vendorId": "vend-1795104968969",
+      "vendorName": "Ranga Tshirts (Ranga)",
+      "materialId": "mat-1795105847261",
+      "notes": "Lot #1 (Auto-recorded from Inventory: TSHIRT-BLK-100)",
+      "createdAt": "2026-11-19T16:30:47.261Z"
+    },
+    {
+      "id": "exp-mat-mat-1795105905502",
+      "date": "2026-11-19",
+      "category": "Material Purchase",
+      "description": "Raw Material: Glossy Lamination Film (3 roll @ ₹1200/roll) from City Market Wholesale (Shop #12)",
+      "amount": 3600,
+      "paymentStatus": "Paid",
+      "paymentMethod": "Cash",
+      "vendorName": "City Market Wholesale (Shop #12)",
+      "materialId": "mat-1795105905502",
+      "notes": "Cash bill #4829 (Auto-recorded from Inventory: LAM-GLOSS-30)",
+      "createdAt": "2026-11-19T16:31:45.502Z"
+    }
+  ],
   "enquiries": [],
   "designRevisions": [],
   "attendances": [

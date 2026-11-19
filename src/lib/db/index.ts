@@ -971,7 +971,14 @@ export const db = {
 
   recordExpense(expense: Expense): Expense {
     const data = ensureDatabase();
-    data.expenses.push(expense);
+    const existingIdx = data.expenses.findIndex(
+      (e) => e.id === expense.id || (expense.materialId && e.materialId === expense.materialId)
+    );
+    if (existingIdx >= 0) {
+      data.expenses[existingIdx] = expense;
+    } else {
+      data.expenses.unshift(expense);
+    }
 
     // If this is a vendor payment linked to a work order, update the vendor work order balance & vendor balance
     if (expense.category === 'Vendor Payment' && expense.vendorId) {
