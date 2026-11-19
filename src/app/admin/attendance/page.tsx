@@ -35,7 +35,10 @@ export default function AttendancePage() {
   const [employees, setEmployees] = useState<Labour[]>([]);
   const [attendances, setAttendances] = useState<AttendanceRecord[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'daily' | 'monthly' | 'payouts' | 'employees'>('daily');
+  const [activeTab, setActiveTab] = useState<'daily' | 'monthly' | 'calendar' | 'payouts' | 'employees'>('daily');
+
+  // Calendar View State
+  const [calendarEmpId, setCalendarEmpId] = useState<string>('');
 
   // Payout Ledger & History State
   const [allSalaryPayments, setAllSalaryPayments] = useState<MonthlySalaryPayment[]>([]);
@@ -118,7 +121,11 @@ export default function AttendancePage() {
       const res = await fetch(`/api/attendance?date=${selectedDate}&month=${monthStr}`);
       const data = await res.json();
       if (data.success) {
-        setEmployees(data.employees || []);
+        const emps = data.employees || [];
+        setEmployees(emps);
+        if (emps.length > 0) {
+          setCalendarEmpId((prev) => prev || emps[0].id);
+        }
         setAttendances(data.attendances || []);
         setSalaryPayments(data.salaryPayments || []);
         setAllSalaryPayments(data.allSalaryPayments || []);
@@ -258,6 +265,82 @@ export default function AttendancePage() {
     } finally {
       setSavingDaily(false);
     }
+  };
+
+  // Quick Mark from Monthly Calendar
+  const handleCalendarMarkDay = async (
+    emp: Labour,
+    dateStr: string,
+    newStatus: AttendanceStatus
+  ) => {
+    if (emp.startDate && dateStr < emp.startDate) {
+      alert(`Error: Cannot mark attendance for ${dateStr}. Employee joined on ${emp.startDate}.`);
+      return;
+    }
+
+    const isPerm = emp.paymentType === 'fixed_salary';
+    let dayWage = 0;
+    if (!isPerm) {
+      if (newStatus === 'full_day') dayWage = emp.defaultRate;
+      else if (newStatus === 'half_day') dayWage = Math.round(emp.defaultRate * 0.5);
+    } else {
+      if (newStatus === 'full_day') dayWage = Math.round(emp.defaultRate / 26);
+      else if (newStatus === 'half_day') dayWage = Math.round((emp.defaultRate / 26) * 0.5);
+    }
+
+    const recordToSave: AttendanceRecord = {
+      id: `att-${emp.id}-${dateStr}`,
+      labourId: emp.id,
+      labourName: emp.name,
+      employmentType: isPerm ? 'permanent' : 'temporary',
+      date: dateStr,
+      status: newStatus,
+      workNotes: '',
+      wageCalculated: dayWage,
+      createdAt: new Date().toISOString(),
+    };
+
+    try {
+      const res = await fetch('/api/attendance', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ records: [recordToSave] }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setAttendances((prev) => {
+          const filtered = prev.filter((a) => !(a.labourId === emp.id && a.date === dateStr));
+          return [...filtered, recordToSave];
+        });
+        loadData();
+      } else {
+        alert('Failed to update attendance: ' + (data.error || 'Server error'));
+      }
+    } catch (err: any) {
+      alert('Error updating attendance: ' + err.message);
+    }
+  };
+
+  const handlePrevMonth = () => {
+    let m = parseInt(selectedMonth) - 1;
+    let y = parseInt(selectedYear);
+    if (m < 1) {
+      m = 12;
+      y -= 1;
+    }
+    setSelectedMonth(String(m).padStart(2, '0'));
+    setSelectedYear(String(y));
+  };
+
+  const handleNextMonth = () => {
+    let m = parseInt(selectedMonth) + 1;
+    let y = parseInt(selectedYear);
+    if (m > 12) {
+      m = 1;
+      y += 1;
+    }
+    setSelectedMonth(String(m).padStart(2, '0'));
+    setSelectedYear(String(y));
   };
 
   // Add Employee Handler
@@ -545,6 +628,18 @@ export default function AttendancePage() {
           >
             <DollarSign className="w-3.5 h-3.5" />
             <span>Monthly Wage Calculation</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('calendar')}
+            className={`pb-2.5 flex items-center gap-1.5 border-b-2 transition ${
+              activeTab === 'calendar'
+                ? 'border-blue-600 text-blue-600 font-semibold'
+                : 'border-transparent text-slate-500 hover:text-slate-800'
+            }`}
+          >
+            <Calendar className="w-3.5 h-3.5" />
+            <span>Monthly Attendance Calendar</span>
           </button>
 
           <button
@@ -1147,6 +1242,18 @@ export default function AttendancePage() {
                               >
                                 <Edit2 className="w-3 h-3" />
                               </button>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setCalendarEmpId(emp.id);
+                                  setActiveTab('calendar');
+                                }}
+                                className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 flex items-center gap-1 transition"
+                                title="View monthly calendar of attendance"
+                              >
+                                <Calendar className="w-2.5 h-2.5" />
+                                <span>Calendar</span>
+                              </button>
                             </div>
                             <div className="text-[10px] text-slate-400 font-semibold">{emp.workType}</div>
                             {emp.startDate && (
@@ -1276,6 +1383,361 @@ export default function AttendancePage() {
           </div>
         </div>
       )}
+
+      {/* ========================================================================= */}
+      {/* TAB: MONTHLY ATTENDANCE CALENDAR (ABSENT, HALF DAY, PRESENT BY DATE) */}
+      {/* ========================================================================= */}
+      {activeTab === 'calendar' && (() => {
+        const calEmp = employees.find((e) => e.id === calendarEmpId) || employees[0];
+        if (!calEmp) {
+          return (
+            <div className="bg-white p-8 rounded-xl border border-slate-200 text-center">
+              <Users className="w-10 h-10 text-slate-300 mx-auto mb-2" />
+              <p className="text-slate-500 font-medium">No registered employees found.</p>
+            </div>
+          );
+        }
+
+        const yearNum = parseInt(selectedYear);
+        const monthNum = parseInt(selectedMonth);
+        const daysInMonth = new Date(yearNum, monthNum, 0).getDate();
+        // Day of week for 1st of month: 0=Sun, 1=Mon, ..., 6=Sat
+        const firstDayOfWeek = new Date(yearNum, monthNum - 1, 1).getDay();
+        // Monday-based offset: 0=Mon, 1=Tue, ..., 6=Sun
+        const mondayOffset = (firstDayOfWeek + 6) % 7;
+
+        const monthNames = [
+          'January', 'February', 'March', 'April', 'May', 'June',
+          'July', 'August', 'September', 'October', 'November', 'December'
+        ];
+        const monthTitle = `${monthNames[monthNum - 1]} ${selectedYear}`;
+        const calStats = getMonthlyStatsForEmployee(calEmp);
+        const isPerm = calEmp.paymentType === 'fixed_salary';
+
+        // Count Sundays
+        let sundaysCount = 0;
+        for (let d = 1; d <= daysInMonth; d++) {
+          if (new Date(yearNum, monthNum - 1, d).getDay() === 0) {
+            sundaysCount++;
+          }
+        }
+
+        return (
+          <div className="space-y-4">
+            {/* Calendar Controls & Staff Selector */}
+            <div className="bg-white p-3.5 sm:p-4 rounded-xl border border-slate-200 shadow-xs flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
+              {/* Month Navigation */}
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handlePrevMonth}
+                  className="p-2 rounded-lg border border-slate-200 hover:bg-slate-50 text-slate-600 transition"
+                  title="Previous Month"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                </button>
+
+                <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-lg font-bold text-xs text-slate-800">
+                  <Calendar className="w-4 h-4 text-dp-orange" />
+                  <span className="font-extrabold text-sm text-slate-900">{monthTitle}</span>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handleNextMonth}
+                  className="p-2 rounded-lg border border-slate-200 hover:bg-slate-50 text-slate-600 transition"
+                  title="Next Month"
+                >
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+
+                {/* Quick Month Selectors */}
+                <select
+                  value={selectedMonth}
+                  onChange={(e) => setSelectedMonth(e.target.value)}
+                  className="px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white font-bold text-xs text-slate-800 focus:outline-none"
+                >
+                  <option value="01">January</option>
+                  <option value="02">February</option>
+                  <option value="03">March</option>
+                  <option value="04">April</option>
+                  <option value="05">May</option>
+                  <option value="06">June</option>
+                  <option value="07">July</option>
+                  <option value="08">August</option>
+                  <option value="09">September</option>
+                  <option value="10">October</option>
+                  <option value="11">November</option>
+                  <option value="12">December</option>
+                </select>
+
+                <select
+                  value={selectedYear}
+                  onChange={(e) => setSelectedYear(e.target.value)}
+                  className="px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white font-bold text-xs text-slate-800 focus:outline-none"
+                >
+                  <option value="2025">2025</option>
+                  <option value="2026">2026</option>
+                  <option value="2027">2027</option>
+                </select>
+              </div>
+
+              {/* Employee Selector Dropdown */}
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-bold text-slate-500 uppercase flex items-center gap-1">
+                  <Users className="w-3.5 h-3.5 text-blue-600" />
+                  Staff Member:
+                </span>
+                <select
+                  value={calendarEmpId}
+                  onChange={(e) => setCalendarEmpId(e.target.value)}
+                  className="px-3 py-1.5 rounded-xl border-2 border-blue-600 bg-white font-black text-xs text-slate-900 focus:outline-none shadow-xs"
+                >
+                  {employees.map((e) => (
+                    <option key={e.id} value={e.id}>
+                      {e.name} ({e.workType}) {e.startDate ? `• Joined ${e.startDate}` : ''}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {/* Error Banner if viewing month before joining date */}
+            {calStats.notJoinedYet && (
+              <div className="bg-rose-50 border-2 border-rose-300 text-rose-900 p-4 rounded-xl text-xs flex items-start gap-3 shadow-xs animate-fadeIn">
+                <AlertCircle className="w-5 h-5 text-rose-600 shrink-0 mt-0.5" />
+                <div className="space-y-1">
+                  <span className="font-extrabold text-sm block text-rose-950">
+                    ⚠️ Error: {calEmp.name} Joined on {calEmp.startDate}
+                  </span>
+                  <p className="text-rose-800 font-medium">
+                    You are viewing <strong>{monthTitle}</strong>, which is prior to the employee&apos;s official joining date ({calEmp.startDate}). Attendance and salary calculation are not valid before joining.
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Employee Monthly Summary Card & Legend */}
+            <div className="bg-white p-4 sm:p-5 rounded-xl border border-slate-200 shadow-xs space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-blue-600 text-white font-black text-base flex items-center justify-center shrink-0">
+                    {calEmp.name.charAt(0).toUpperCase()}
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h3 className="font-black text-base text-slate-900">{calEmp.name}</h3>
+                      <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-purple-50 text-purple-700 border border-purple-200">
+                        {isPerm ? 'Permanent (Fixed Salary)' : 'Temporary (Daily / Work)'}
+                      </span>
+                    </div>
+                    <div className="text-xs text-slate-500 font-medium flex flex-wrap items-center gap-3 mt-0.5">
+                      <span>{calEmp.workType}</span>
+                      <span>•</span>
+                      <span>Rate: ₹{calEmp.defaultRate.toLocaleString('en-IN')}{isPerm ? '/month' : '/day'}</span>
+                      {calEmp.startDate && (
+                        <>
+                          <span>•</span>
+                          <span className="text-blue-700 font-semibold">Joining Date: {calEmp.startDate}</span>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => openEditEmployee(calEmp)}
+                    className="px-3 py-1.5 rounded-lg border border-slate-200 text-xs font-semibold text-slate-700 hover:bg-slate-50 flex items-center gap-1.5 transition"
+                  >
+                    <Edit2 className="w-3.5 h-3.5 text-blue-600" />
+                    <span>Edit Joining Date</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Monthly Stat Badges */}
+              <div className="grid grid-cols-2 sm:grid-cols-6 gap-2.5 text-center text-xs">
+                <div className="bg-emerald-50 border border-emerald-200 p-2.5 rounded-xl">
+                  <span className="text-[10px] uppercase font-bold text-emerald-700 block">🟢 Present (Full)</span>
+                  <span className="text-lg font-black text-emerald-800">{calStats.fullDays} Days</span>
+                </div>
+                <div className="bg-amber-50 border border-amber-200 p-2.5 rounded-xl">
+                  <span className="text-[10px] uppercase font-bold text-amber-700 block">🟡 Half Day</span>
+                  <span className="text-lg font-black text-amber-800">{calStats.halfDays} Days</span>
+                </div>
+                <div className="bg-rose-50 border border-rose-200 p-2.5 rounded-xl">
+                  <span className="text-[10px] uppercase font-bold text-rose-700 block">🔴 Absent</span>
+                  <span className="text-lg font-black text-rose-800">{calStats.absents} Days</span>
+                </div>
+                <div className="bg-slate-50 border border-slate-200 p-2.5 rounded-xl">
+                  <span className="text-[10px] uppercase font-bold text-slate-600 block">⚪ Weekly Off</span>
+                  <span className="text-lg font-black text-slate-700">{sundaysCount} Days</span>
+                </div>
+                <div className="bg-blue-50 border border-blue-200 p-2.5 rounded-xl">
+                  <span className="text-[10px] uppercase font-bold text-blue-700 block">💼 Payable Days</span>
+                  <span className="text-lg font-black text-blue-800">{calStats.effectiveDays}</span>
+                </div>
+                <div className="bg-indigo-50 border border-indigo-200 p-2.5 rounded-xl">
+                  <span className="text-[10px] uppercase font-bold text-indigo-700 block">💰 Payable Salary</span>
+                  <span className="text-lg font-black text-indigo-900">₹{calStats.payable.toLocaleString('en-IN')}</span>
+                </div>
+              </div>
+
+              {/* Status Color Legend */}
+              <div className="flex flex-wrap items-center justify-between text-[11px] font-semibold text-slate-600 bg-slate-50 p-2.5 rounded-lg border border-slate-200 gap-2">
+                <span className="text-[10px] font-black uppercase text-slate-400">Legend:</span>
+                <span className="flex items-center gap-1 text-emerald-700">
+                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-600 inline-block" />
+                  Full Day (Present)
+                </span>
+                <span className="flex items-center gap-1 text-amber-700">
+                  <span className="w-2.5 h-2.5 rounded-full bg-amber-500 inline-block" />
+                  Half Day (0.5)
+                </span>
+                <span className="flex items-center gap-1 text-rose-700">
+                  <span className="w-2.5 h-2.5 rounded-full bg-rose-600 inline-block" />
+                  Absent (0)
+                </span>
+                <span className="flex items-center gap-1 text-slate-700">
+                  <span className="w-2.5 h-2.5 rounded-full bg-slate-400 inline-block" />
+                  Weekly Off / Sunday
+                </span>
+                <span className="flex items-center gap-1 text-slate-500">
+                  <span className="w-2.5 h-2.5 rounded-full bg-slate-300 inline-block" />
+                  Pre-Employment (Locked)
+                </span>
+              </div>
+            </div>
+
+            {/* 7-Column Calendar Grid */}
+            <div className="bg-white p-3.5 sm:p-5 rounded-xl border border-slate-200 shadow-xs space-y-2">
+              {/* Day of Week Headers (Mon -> Sun) */}
+              <div className="grid grid-cols-7 gap-1.5 sm:gap-2 text-center font-bold text-xs text-slate-600 uppercase pb-2 border-b border-slate-200">
+                <div className="py-1">Mon</div>
+                <div className="py-1">Tue</div>
+                <div className="py-1">Wed</div>
+                <div className="py-1">Thu</div>
+                <div className="py-1">Fri</div>
+                <div className="py-1">Sat</div>
+                <div className="py-1 text-rose-600 font-extrabold">Sun</div>
+              </div>
+
+              {/* Grid of Days */}
+              <div className="grid grid-cols-7 gap-1.5 sm:gap-2 pt-1">
+                {/* Blank padding cells before 1st of month */}
+                {Array.from({ length: mondayOffset }).map((_, idx) => (
+                  <div key={`blank-${idx}`} className="min-h-[90px] sm:min-h-[105px] bg-slate-50/50 rounded-xl border border-dashed border-slate-200/60 p-2" />
+                ))}
+
+                {/* Day cells 1 .. daysInMonth */}
+                {Array.from({ length: daysInMonth }).map((_, idx) => {
+                  const dayNum = idx + 1;
+                  const dateStr = `${selectedYear}-${selectedMonth}-${String(dayNum).padStart(2, '0')}`;
+                  const dayOfWeek = new Date(yearNum, monthNum - 1, dayNum).getDay();
+                  const isSunday = dayOfWeek === 0;
+                  const isBeforeJoining = Boolean(calEmp.startDate && dateStr < calEmp.startDate);
+                  const attRec = attendances.find((a) => a.labourId === calEmp.id && a.date === dateStr);
+
+                  // Determine display status
+                  let currentDayStatus: AttendanceStatus | 'sunday_off' | 'pre_joining' = 'full_day';
+                  if (isBeforeJoining) {
+                    currentDayStatus = 'pre_joining';
+                  } else if (attRec) {
+                    currentDayStatus = attRec.status;
+                  } else if (isSunday) {
+                    currentDayStatus = 'sunday_off';
+                  } else {
+                    currentDayStatus = 'full_day';
+                  }
+
+                  // Day container color
+                  let containerBg = 'bg-white border-slate-200';
+                  let statusBadge = null;
+
+                  if (isBeforeJoining) {
+                    containerBg = 'bg-slate-50/60 border-dashed border-rose-200 opacity-60';
+                    statusBadge = (
+                      <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-rose-100 text-rose-700 block text-center truncate">
+                        🔒 Not Joined
+                      </span>
+                    );
+                  } else if (currentDayStatus === 'full_day') {
+                    containerBg = 'bg-emerald-50/80 border-emerald-300 text-emerald-950';
+                    statusBadge = (
+                      <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-emerald-600 text-white block text-center truncate">
+                        🟢 Present
+                      </span>
+                    );
+                  } else if (currentDayStatus === 'half_day') {
+                    containerBg = 'bg-amber-50/80 border-amber-300 text-amber-950';
+                    statusBadge = (
+                      <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-amber-500 text-white block text-center truncate">
+                        🟡 Half Day
+                      </span>
+                    );
+                  } else if (currentDayStatus === 'absent') {
+                    containerBg = 'bg-rose-50/90 border-rose-300 text-rose-950';
+                    statusBadge = (
+                      <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-rose-600 text-white block text-center truncate">
+                        🔴 Absent
+                      </span>
+                    );
+                  } else if (currentDayStatus === 'holiday' || currentDayStatus === 'sunday_off') {
+                    containerBg = 'bg-slate-100 border-slate-200 text-slate-700';
+                    statusBadge = (
+                      <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-slate-500 text-white block text-center truncate">
+                        {isSunday ? '⚪ Sunday Off' : '⚪ Holiday'}
+                      </span>
+                    );
+                  }
+
+                  return (
+                    <div
+                      key={`day-${dayNum}`}
+                      className={`min-h-[90px] sm:min-h-[105px] rounded-xl border p-2 flex flex-col justify-between transition ${containerBg}`}
+                    >
+                      {/* Top Bar: Date Number and Indicator */}
+                      <div className="flex items-center justify-between">
+                        <span className={`text-xs sm:text-sm font-black ${isSunday ? 'text-rose-600' : 'text-slate-900'}`}>
+                          {dayNum}
+                        </span>
+                        {isSunday && (
+                          <span className="text-[9px] font-bold text-rose-500 uppercase">Sun</span>
+                        )}
+                      </div>
+
+                      {/* Middle: Status Pill */}
+                      <div className="my-1">
+                        {statusBadge}
+                      </div>
+
+                      {/* Bottom: Quick Select Dropdown to change directly in calendar */}
+                      {isBeforeJoining ? (
+                        <div className="text-[9px] text-rose-500 text-center font-semibold italic">
+                          Starts {calEmp.startDate}
+                        </div>
+                      ) : (
+                        <select
+                          value={attRec?.status || (isSunday ? 'holiday' : 'full_day')}
+                          onChange={(e) => handleCalendarMarkDay(calEmp, dateStr, e.target.value as AttendanceStatus)}
+                          className="w-full text-[9px] sm:text-[10px] font-bold py-0.5 px-1 rounded-md border border-slate-200 bg-white/90 text-slate-800 cursor-pointer focus:outline-none hover:bg-white transition"
+                        >
+                          <option value="full_day">🟢 Present (Full)</option>
+                          <option value="half_day">🟡 Half Day</option>
+                          <option value="absent">🔴 Absent</option>
+                          <option value="holiday">⚪ Off / Holiday</option>
+                        </select>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* ========================================================================= */}
       {/* TAB 3: EMPLOYEE MONTHLY PAYMENTS (PAID / PENDING) */}

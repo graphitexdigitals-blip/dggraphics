@@ -491,7 +491,7 @@
       "workType": "Printer Operator",
       "paymentType": "fixed_salary",
       "defaultRate": 15000,
-      "startDate": "2026-11-01",
+      "startDate": "2026-10-01",
       "totalEarnings": 0,
       "totalPaid": 0,
       "pendingAmount": 0,
@@ -548,6 +548,17 @@
       "workNotes": "",
       "wageCalculated": 577,
       "createdAt": "2026-11-19T14:34:42.157Z"
+    },
+    {
+      "id": "att-emp-1795097201466-2026-11-03",
+      "labourId": "emp-1795097201466",
+      "labourName": "racchu",
+      "employmentType": "permanent",
+      "date": "2026-11-03",
+      "status": "full_day",
+      "workNotes": "",
+      "wageCalculated": 577,
+      "createdAt": "2026-11-19T14:46:04.252Z"
     }
   ],
   "salaryPayments": [],

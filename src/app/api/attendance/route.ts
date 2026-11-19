@@ -9,7 +9,11 @@ export async function GET(req: Request) {
     const month = searchParams.get('month') || undefined;
     const labourId = searchParams.get('labourId') || undefined;
 
-    const attendances = db.getAttendance({ date, month, labourId });
+    const attendances = db.getAttendance({
+      date: month ? undefined : date,
+      month,
+      labourId,
+    });
     const employees = db.getLabour();
     const salaryPayments = db.getSalaryPayments(month);
     const allSalaryPayments = db.getSalaryPayments();
