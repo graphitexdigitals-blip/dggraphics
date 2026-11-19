@@ -108,6 +108,8 @@ export default function AttendancePage() {
   const [salaryPayments, setSalaryPayments] = useState<MonthlySalaryPayment[]>([]);
   const [paymentStatuses, setPaymentStatuses] = useState<Record<string, 'Paid' | 'Pending'>>({});
   const [customPayableAmounts, setCustomPayableAmounts] = useState<Record<string, number>>({});
+  const [editingAmountEmpKey, setEditingAmountEmpKey] = useState<string | null>(null);
+  const [tempAmountInput, setTempAmountInput] = useState<string>('');
   const [savingPaymentId, setSavingPaymentId] = useState<string | null>(null);
   const [savedPaymentSuccessId, setSavedPaymentSuccessId] = useState<string | null>(null);
 
@@ -427,6 +429,30 @@ export default function AttendancePage() {
     } finally {
       setSavingPaymentId(null);
     }
+  };
+
+  // Start inline editing of an amount
+  const startEditingAmount = (key: string, currentVal: number) => {
+    setEditingAmountEmpKey(key);
+    setTempAmountInput(String(currentVal));
+  };
+
+  // Cancel inline editing
+  const cancelInlineAmount = () => {
+    setEditingAmountEmpKey(null);
+    setTempAmountInput('');
+  };
+
+  // Save inline edited amount (persists immediately to DB via save_salary_status)
+  const saveInlineAmount = async (emp: Labour, key: string) => {
+    const parsed = parseFloat(tempAmountInput);
+    const newAmount = isNaN(parsed) || parsed < 0 ? 0 : parsed;
+    setCustomPayableAmounts((prev) => ({
+      ...prev,
+      [key]: newAmount,
+    }));
+    setEditingAmountEmpKey(null);
+    await handleSavePaymentStatus(emp, newAmount);
   };
 
   // Open Payout Modal
@@ -1324,7 +1350,7 @@ export default function AttendancePage() {
                             {stats.effectiveDays}
                           </td>
 
-                          {/* Calculated Payable (Editable by Admin) */}
+                          {/* Calculated Payable (Editable on Edit Click) */}
                           <td className="py-3.5 px-4 text-right whitespace-nowrap">
                             {stats.notJoinedYet ? (
                               <div className="font-bold text-slate-400 text-xs">
@@ -1333,26 +1359,68 @@ export default function AttendancePage() {
                                   Not Employed Yet
                                 </div>
                               </div>
-                            ) : (
+                            ) : editingAmountEmpKey === saveKey ? (
                               <div className="flex flex-col items-end gap-1">
-                                <div className="inline-flex items-center justify-end bg-white border border-slate-300 rounded-lg shadow-2xs hover:border-blue-400 focus-within:border-blue-600 focus-within:ring-2 focus-within:ring-blue-500/20 transition px-2 py-1">
-                                  <span className="font-black text-slate-500 text-xs mr-1">₹</span>
+                                <div className="inline-flex items-center gap-1.5 bg-white border-2 border-blue-600 rounded-xl px-2 py-1 shadow-md">
+                                  <span className="font-black text-slate-500 text-xs">₹</span>
                                   <input
                                     type="number"
                                     min="0"
                                     step="1"
-                                    value={empPayableAmount}
-                                    onChange={(e) => {
-                                      const val = parseFloat(e.target.value) || 0;
-                                      setCustomPayableAmounts((prev) => ({
-                                        ...prev,
-                                        [saveKey]: val,
-                                      }));
+                                    autoFocus
+                                    value={tempAmountInput}
+                                    onChange={(e) => setTempAmountInput(e.target.value)}
+                                    onKeyDown={(e) => {
+                                      if (e.key === 'Enter') {
+                                        e.preventDefault();
+                                        saveInlineAmount(emp, saveKey);
+                                      } else if (e.key === 'Escape') {
+                                        cancelInlineAmount();
+                                      }
                                     }}
                                     className="w-24 text-right font-black text-sm text-slate-900 bg-transparent focus:outline-none"
-                                    title="Click to edit payable amount"
+                                    placeholder="Amount"
                                   />
-                                  <Edit2 className="w-3 h-3 text-slate-400 ml-1 shrink-0 pointer-events-none" />
+                                  <button
+                                    type="button"
+                                    disabled={savingPaymentId === saveKey}
+                                    onClick={() => saveInlineAmount(emp, saveKey)}
+                                    className="p-1 rounded-md bg-emerald-600 hover:bg-emerald-700 text-white transition shadow-xs flex items-center justify-center"
+                                    title="Save Amount"
+                                  >
+                                    {savingPaymentId === saveKey ? (
+                                      <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                    ) : (
+                                      <Check className="w-3.5 h-3.5" />
+                                    )}
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={cancelInlineAmount}
+                                    className="p-1 rounded-md hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition"
+                                    title="Cancel"
+                                  >
+                                    <X className="w-3.5 h-3.5" />
+                                  </button>
+                                </div>
+                                <span className="text-[9px] font-semibold text-blue-600">
+                                  Click ✓ to save
+                                </span>
+                              </div>
+                            ) : (
+                              <div className="flex flex-col items-end gap-1">
+                                <div className="inline-flex items-center justify-end gap-1.5 group">
+                                  <span className="font-black text-sm text-slate-900">
+                                    ₹{empPayableAmount.toLocaleString('en-IN')}
+                                  </span>
+                                  <button
+                                    type="button"
+                                    onClick={() => startEditingAmount(saveKey, empPayableAmount)}
+                                    className="p-1 rounded-md border border-slate-200 text-slate-400 hover:text-blue-600 hover:border-blue-300 hover:bg-blue-50 transition shadow-2xs"
+                                    title="Edit Amount"
+                                  >
+                                    <Edit2 className="w-3.5 h-3.5" />
+                                  </button>
                                 </div>
 
                                 <div className="flex items-center gap-1.5 text-[10px]">
@@ -1361,12 +1429,13 @@ export default function AttendancePage() {
                                       <span>✏️ Admin Override</span>
                                       <button
                                         type="button"
-                                        onClick={() => {
+                                        onClick={async () => {
                                           setCustomPayableAmounts((prev) => {
                                             const copy = { ...prev };
                                             delete copy[saveKey];
                                             return copy;
                                           });
+                                          await handleSavePaymentStatus(emp, stats.payable);
                                         }}
                                         className="text-slate-400 hover:text-rose-600 underline text-[9px] ml-0.5"
                                         title="Reset to calculated formula amount"
@@ -2143,32 +2212,76 @@ export default function AttendancePage() {
                             </td>
 
                             <td className="py-3.5 px-4 text-right whitespace-nowrap">
-                              <div className="flex flex-col items-end gap-1">
-                                <div className="inline-flex items-center justify-end bg-white border border-slate-300 rounded-lg shadow-2xs hover:border-blue-400 focus-within:border-blue-600 focus-within:ring-2 focus-within:ring-blue-500/20 transition px-2 py-1">
-                                  <span className="font-black text-slate-500 text-xs mr-1">₹</span>
-                                  <input
-                                    type="number"
-                                    min="0"
-                                    step="1"
-                                    value={empPayableAmount}
-                                    onChange={(e) => {
-                                      const val = parseFloat(e.target.value) || 0;
-                                      setCustomPayableAmounts((prev) => ({
-                                        ...prev,
-                                        [saveKey]: val,
-                                      }));
-                                    }}
-                                    className="w-24 text-right font-black text-sm text-slate-900 bg-transparent focus:outline-none"
-                                    title="Click to edit payable amount"
-                                  />
-                                  <Edit2 className="w-3 h-3 text-slate-400 ml-1 shrink-0 pointer-events-none" />
-                                </div>
-                                {empPayableAmount !== stats.payable && (
-                                  <span className="text-[10px] font-semibold text-blue-700">
-                                    ✏️ Custom Amount
+                              {editingAmountEmpKey === saveKey ? (
+                                <div className="flex flex-col items-end gap-1">
+                                  <div className="inline-flex items-center gap-1.5 bg-white border-2 border-blue-600 rounded-xl px-2 py-1 shadow-md">
+                                    <span className="font-black text-slate-500 text-xs">₹</span>
+                                    <input
+                                      type="number"
+                                      min="0"
+                                      step="1"
+                                      autoFocus
+                                      value={tempAmountInput}
+                                      onChange={(e) => setTempAmountInput(e.target.value)}
+                                      onKeyDown={(e) => {
+                                        if (e.key === 'Enter') {
+                                          e.preventDefault();
+                                          saveInlineAmount(emp, saveKey);
+                                        } else if (e.key === 'Escape') {
+                                          cancelInlineAmount();
+                                        }
+                                      }}
+                                      className="w-24 text-right font-black text-sm text-slate-900 bg-transparent focus:outline-none"
+                                      placeholder="Amount"
+                                    />
+                                    <button
+                                      type="button"
+                                      disabled={savingPaymentId === saveKey}
+                                      onClick={() => saveInlineAmount(emp, saveKey)}
+                                      className="p-1 rounded-md bg-emerald-600 hover:bg-emerald-700 text-white transition shadow-xs flex items-center justify-center"
+                                      title="Save Amount"
+                                    >
+                                      {savingPaymentId === saveKey ? (
+                                        <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                      ) : (
+                                        <Check className="w-3.5 h-3.5" />
+                                      )}
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={cancelInlineAmount}
+                                      className="p-1 rounded-md hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition"
+                                      title="Cancel"
+                                    >
+                                      <X className="w-3.5 h-3.5" />
+                                    </button>
+                                  </div>
+                                  <span className="text-[9px] font-semibold text-blue-600">
+                                    Click ✓ to save
                                   </span>
-                                )}
-                              </div>
+                                </div>
+                              ) : (
+                                <div className="flex flex-col items-end gap-1">
+                                  <div className="inline-flex items-center justify-end gap-1.5 group">
+                                    <span className="font-black text-sm text-slate-900">
+                                      ₹{empPayableAmount.toLocaleString('en-IN')}
+                                    </span>
+                                    <button
+                                      type="button"
+                                      onClick={() => startEditingAmount(saveKey, empPayableAmount)}
+                                      className="p-1 rounded-md border border-slate-200 text-slate-400 hover:text-blue-600 hover:border-blue-300 hover:bg-blue-50 transition shadow-2xs"
+                                      title="Edit Amount"
+                                    >
+                                      <Edit2 className="w-3.5 h-3.5" />
+                                    </button>
+                                  </div>
+                                  {empPayableAmount !== stats.payable && (
+                                    <span className="text-[10px] font-semibold text-blue-700">
+                                      ✏️ Custom Amount
+                                    </span>
+                                  )}
+                                </div>
+                              )}
                             </td>
 
                             <td className="py-3.5 px-4 text-center whitespace-nowrap">
