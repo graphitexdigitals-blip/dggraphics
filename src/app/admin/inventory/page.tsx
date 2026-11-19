@@ -22,6 +22,22 @@ export default function AdminInventoryPage() {
   const [stockQuantity, setStockQuantity] = useState(5);
   const [minStockAlert, setMinStockAlert] = useState(2);
 
+  const categoryDefaultUnits: Record<string, string> = {
+    'Flex Rolls': 'roll',
+    'Vinyl Rolls': 'roll',
+    'Mug Blanks': 'pcs',
+    'T-Shirts': 'pcs',
+    'Printing Ink': 'bottle',
+    'Paper & Board': 'sheet',
+  };
+
+  const handleCategoryChange = (newCat: string) => {
+    setCategory(newCat);
+    if (categoryDefaultUnits[newCat]) {
+      setUnit(categoryDefaultUnits[newCat]);
+    }
+  };
+
   // Consume State
   const [consumeJobNumber, setConsumeJobNumber] = useState('');
   const [consumeQty, setConsumeQty] = useState(1);
@@ -247,7 +263,7 @@ export default function AdminInventoryPage() {
                   <label className="block font-bold text-slate-700 uppercase mb-1">Category</label>
                   <select
                     value={category}
-                    onChange={(e) => setCategory(e.target.value)}
+                    onChange={(e) => handleCategoryChange(e.target.value)}
                     className="w-full px-3 py-2 border border-slate-200 rounded-lg bg-white"
                   >
                     <option value="Flex Rolls">Flex Rolls</option>
@@ -262,14 +278,32 @@ export default function AdminInventoryPage() {
 
               <div className="grid grid-cols-3 gap-3">
                 <div>
-                  <label className="block font-bold text-slate-700 uppercase mb-1">Unit</label>
+                  <label className="block font-bold text-slate-700 uppercase mb-1">
+                    Unit <span className="text-[10px] font-normal text-slate-400 lowercase">(pcs, roll, etc.)</span>
+                  </label>
                   <input
                     type="text"
                     value={unit}
                     onChange={(e) => setUnit(e.target.value)}
-                    placeholder="roll / pcs"
-                    className="w-full px-3 py-2 border border-slate-200 rounded-lg"
+                    placeholder="e.g. pcs, roll, sheet"
+                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs"
                   />
+                  <div className="flex flex-wrap gap-1 mt-1.5">
+                    {['pcs', 'roll', 'sheet', 'box', 'bottle'].map((u) => (
+                      <button
+                        key={u}
+                        type="button"
+                        onClick={() => setUnit(u)}
+                        className={`px-1.5 py-0.5 text-[10px] font-semibold rounded transition-colors ${
+                          unit.toLowerCase() === u
+                            ? 'bg-dp-navy text-white'
+                            : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                        }`}
+                      >
+                        {u}
+                      </button>
+                    ))}
+                  </div>
                 </div>
                 <div>
                   <label className="block font-bold text-slate-700 uppercase mb-1">Purchase Cost</label>
