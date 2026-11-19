@@ -409,6 +409,12 @@ export default function AdminReportsPage() {
   const studioTotalLiabilities = totalVendorLiabilities + totalLabourLiabilities;
   const studioNetWorth = studioTotalAssets - studioTotalLiabilities;
 
+  // Overall Operating Expenses & Operating Net Profit (Reconciles with Dashboard)
+  const periodTotalExpenses = expenses
+    .filter((e) => isDateInCurrentPeriod(e.date))
+    .reduce((s, e) => s + e.amount, 0);
+  const operatingNetProfit = totalBilled - periodTotalExpenses;
+
   const profitableJobsCount = filteredOrders.filter((o) => getOrderFinancials(o).profitOrLoss > 0).length;
   const lossJobsCount = filteredOrders.filter((o) => getOrderFinancials(o).profitOrLoss < 0).length;
   const breakEvenJobsCount = filteredOrders.filter((o) => getOrderFinancials(o).profitOrLoss === 0).length;
@@ -726,22 +732,22 @@ export default function AdminReportsPage() {
           </span>
         </div>
 
-        {/* Net Profit */}
+        {/* Job Direct Profit */}
         <div className="bg-white p-3.5 rounded-lg border border-slate-200 shadow-xs">
           <span className="text-[11px] font-medium uppercase text-emerald-700 block tracking-wider">
-            Net Studio Profit
+            Job Direct Profit
           </span>
           <div className="text-xl font-bold text-emerald-700 mt-1">
             ₹{totalNetProfit.toLocaleString('en-IN')}
           </div>
           <span className="text-[11px] text-emerald-600 font-medium block mt-0.5">
-            {overallMargin}% net margin
+            {overallMargin}% direct job margin
           </span>
         </div>
       </div>
 
       {/* ========================================================= */}
-      {/* FINANCIAL AUDIT STRIP 2: EMPLOYEE EXPENSE, NET WORTH, NET PROFIT, PROFIT % */}
+      {/* FINANCIAL AUDIT STRIP 2: EMPLOYEE EXPENSE, NET WORTH, OPERATING NET PROFIT, PROFIT % */}
       {/* ========================================================= */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
         {/* Employee Expense */}
@@ -786,33 +792,41 @@ export default function AdminReportsPage() {
           </div>
         </div>
 
-        {/* Net Profit (Rupees) */}
+        {/* Operating Net Profit (Reconciles with Dashboard) */}
         <div className="bg-white p-3.5 rounded-lg border border-slate-200 shadow-xs flex items-center justify-between">
           <div>
             <div className="flex items-center gap-1.5">
-              <span className="text-[11px] font-medium uppercase text-emerald-700 tracking-wider">
-                Net Profit
+              <span className="text-[11px] font-medium uppercase text-slate-700 tracking-wider">
+                Operating Net Profit
               </span>
               <span
                 className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
-                  totalNetProfit > 0
+                  operatingNetProfit >= 0
                     ? 'bg-emerald-100 text-emerald-800'
-                    : totalNetProfit === 0
-                    ? 'bg-slate-100 text-slate-700'
-                    : 'bg-rose-100 text-rose-800'
+                    : 'bg-amber-100 text-amber-800'
                 }`}
               >
-                {totalNetProfit > 0 ? 'Profit' : totalNetProfit === 0 ? 'Break-Even' : 'Loss'}
+                {operatingNetProfit >= 0 ? 'Surplus' : 'Stock & Payroll'}
               </span>
             </div>
-            <div className="text-xl font-bold text-emerald-700 mt-1">
-              ₹{totalNetProfit.toLocaleString('en-IN')}
+            <div
+              className={`text-xl font-bold mt-1 ${
+                operatingNetProfit >= 0 ? 'text-emerald-700' : 'text-slate-800'
+              }`}
+            >
+              ₹{operatingNetProfit.toLocaleString('en-IN')}
             </div>
             <span className="text-[11px] text-slate-400 block mt-0.5">
-              Billed ₹{totalBilled.toLocaleString('en-IN')} − Direct Costs ₹{totalCosts.toLocaleString('en-IN')}
+              Revenue ₹{totalBilled.toLocaleString('en-IN')} − Outflows ₹{periodTotalExpenses.toLocaleString('en-IN')}
             </span>
           </div>
-          <div className="w-10 h-10 rounded-lg bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-600">
+          <div
+            className={`w-10 h-10 rounded-lg border flex items-center justify-center ${
+              operatingNetProfit >= 0
+                ? 'bg-emerald-50 border-emerald-100 text-emerald-600'
+                : 'bg-slate-50 border-slate-200 text-slate-600'
+            }`}
+          >
             <DollarSign className="w-5 h-5" />
           </div>
         </div>
@@ -822,7 +836,7 @@ export default function AdminReportsPage() {
           <div>
             <div className="flex items-center gap-1.5">
               <span className="text-[11px] font-medium uppercase text-emerald-700 tracking-wider">
-                Profit Margin (%)
+                Job Margin (%)
               </span>
               <span
                 className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
@@ -848,7 +862,7 @@ export default function AdminReportsPage() {
               {profitPercentage > 0 ? '+' : ''}{profitPercentage.toFixed(1)}%
             </div>
             <span className="text-[11px] text-slate-400 block mt-0.5">
-              Margin on Billed Revenue
+              Direct Job Profit: ₹{totalNetProfit.toLocaleString('en-IN')}
             </span>
           </div>
           <div className="w-10 h-10 rounded-lg bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-600">
