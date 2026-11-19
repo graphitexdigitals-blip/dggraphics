@@ -237,9 +237,11 @@ export default function AttendancePage() {
           if (current.status === 'full_day') dayWage = emp.defaultRate;
           else if (current.status === 'half_day') dayWage = Math.round(emp.defaultRate * 0.5);
         } else {
-          // Approx daily value of fixed salary for standard 26 work days
-          if (current.status === 'full_day') dayWage = Math.round(emp.defaultRate / 26);
-          else if (current.status === 'half_day') dayWage = Math.round((emp.defaultRate / 26) * 0.5);
+          // Daily value of fixed salary for days in selected month
+          const selDateObj = new Date(selectedDate);
+          const daysInSelMonth = new Date(selDateObj.getFullYear(), selDateObj.getMonth() + 1, 0).getDate();
+          if (current.status === 'full_day') dayWage = Math.round(emp.defaultRate / daysInSelMonth);
+          else if (current.status === 'half_day') dayWage = Math.round((emp.defaultRate / daysInSelMonth) * 0.5);
         }
 
         return {
@@ -292,8 +294,10 @@ export default function AttendancePage() {
       if (newStatus === 'full_day') dayWage = emp.defaultRate;
       else if (newStatus === 'half_day') dayWage = Math.round(emp.defaultRate * 0.5);
     } else {
-      if (newStatus === 'full_day') dayWage = Math.round(emp.defaultRate / 26);
-      else if (newStatus === 'half_day') dayWage = Math.round((emp.defaultRate / 26) * 0.5);
+      const dateObj = new Date(dateStr);
+      const daysInDateMonth = new Date(dateObj.getFullYear(), dateObj.getMonth() + 1, 0).getDate();
+      if (newStatus === 'full_day') dayWage = Math.round(emp.defaultRate / daysInDateMonth);
+      else if (newStatus === 'half_day') dayWage = Math.round((emp.defaultRate / daysInDateMonth) * 0.5);
     }
 
     const recordToSave: AttendanceRecord = {
@@ -541,59 +545,120 @@ export default function AttendancePage() {
 
   const getMonthlyStatsForEmployee = (emp: Labour, customPrefix?: string) => {
     const prefix = customPrefix || monthPrefix;
-    const empRecords = attendances.filter((a) => a.labourId === emp.id && a.date.startsWith(prefix));
-    const fullDays = empRecords.filter((a) => a.status === 'full_day').length;
-    const halfDays = empRecords.filter((a) => a.status === 'half_day').length;
-    const absents = empRecords.filter((a) => a.status === 'absent').length;
-    const holidays = empRecords.filter((a) => a.status === 'holiday').length;
-    const effectiveDays = fullDays + halfDays * 0.5;
-
-    // Check employee start date relative to the target month
     const [targetYear, targetMonthNum] = prefix.split('-').map(Number);
     const startDate = emp.startDate || '2026-01-01';
     const [startYear, startMonthNum, startDayNum] = startDate.split('-').map(Number);
+    const daysInMonth = new Date(targetYear, targetMonthNum, 0).getDate();
+    const today = new Date();
+    const todayStr = today.toISOString().split('T')[0];
+    const currentMonthStr = todayStr.substring(0, 7);
 
     let notJoinedYet = false;
     let joinedThisMonth = false;
-    let payable = 0;
 
     // 1. If target month is prior to employee start date
     if (targetYear < startYear || (targetYear === startYear && targetMonthNum < startMonthNum)) {
       notJoinedYet = true;
-      payable = 0;
-      return { fullDays: 0, halfDays: 0, absents: 0, holidays: 0, effectiveDays: 0, payable: 0, notJoinedYet, joinedThisMonth, startDate: emp.startDate };
+      return {
+        fullDays: 0,
+        halfDays: 0,
+        absents: 0,
+        holidays: 0,
+        sundaysCount: 0,
+        upcomingDays: daysInMonth,
+        preJoiningDays: 0,
+        effectiveDays: 0,
+        payableDays: 0,
+        payable: 0,
+        notJoinedYet: true,
+        joinedThisMonth: false,
+        startDate: emp.startDate,
+        dailyRate: 0,
+      };
     }
 
-    // 2. If target month is the joining month
     if (targetYear === startYear && targetMonthNum === startMonthNum) {
       joinedThisMonth = true;
-      const daysInMonth = new Date(targetYear, targetMonthNum, 0).getDate();
-      const daysEmployed = Math.max(1, daysInMonth - startDayNum + 1);
+    }
 
-      if (emp.paymentType === 'fixed_salary') {
-        const dailyRateCalc = emp.defaultRate / 26;
-        const baseProrated = Math.round(emp.defaultRate * (daysEmployed / daysInMonth));
-        const deductions = (absents * dailyRateCalc) + (halfDays * 0.5 * dailyRateCalc);
-        payable = Math.max(0, Math.round(baseProrated - deductions));
-      } else {
-        payable = Math.round(fullDays * emp.defaultRate + halfDays * emp.defaultRate * 0.5);
+    const isPerm = emp.paymentType === 'fixed_salary';
+    let fullDays = 0;
+    let halfDays = 0;
+    let absents = 0;
+    let holidays = 0;
+    let sundaysCount = 0;
+    let upcomingDays = 0;
+    let preJoiningDays = 0;
+
+    // Iterate through all days of the month up to daysInMonth
+    for (let d = 1; d <= daysInMonth; d++) {
+      const dStr = `${targetYear}-${String(targetMonthNum).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+      const dayOfWeek = new Date(targetYear, targetMonthNum - 1, d).getDay();
+      const isSun = dayOfWeek === 0;
+      const isBeforeJoining = Boolean(emp.startDate && dStr < emp.startDate);
+
+      if (isBeforeJoining) {
+        preJoiningDays++;
+        continue;
       }
 
-      return { fullDays, halfDays, absents, holidays, effectiveDays, payable, notJoinedYet, joinedThisMonth, startDate: emp.startDate };
+      // If viewing ongoing or future month, days strictly after today are Upcoming (not yet elapsed)
+      if (dStr > todayStr) {
+        upcomingDays++;
+        continue;
+      }
+
+      // Elapsed day on or before today
+      const rec = attendances.find((a) => a.labourId === emp.id && a.date === dStr);
+      if (rec) {
+        if (rec.status === 'full_day') fullDays++;
+        else if (rec.status === 'half_day') halfDays++;
+        else if (rec.status === 'absent') absents++;
+        else if (rec.status === 'holiday') holidays++;
+      } else if (isSun) {
+        sundaysCount++;
+      } else {
+        // Unmarked past/present weekday for permanent staff
+        if (isPerm) {
+          fullDays++;
+        }
+      }
     }
 
-    // 3. Normal active month
-    if (emp.paymentType === 'fixed_salary') {
-      const workingDaysInMonth = 26;
-      const dailyRateCalc = emp.defaultRate / workingDaysInMonth;
-      // Fixed salary: full monthly pay minus deductions for absence or half days
-      const deductions = (absents * dailyRateCalc) + (halfDays * 0.5 * dailyRateCalc);
-      payable = Math.max(0, Math.round(emp.defaultRate - deductions));
+    // Daily rate for the month
+    const dailyRate = emp.defaultRate / daysInMonth;
+
+    let payable = 0;
+    let payableDays = 0;
+
+    if (isPerm) {
+      // Salaried staff: Paid for attended days + paid weekly offs (Sundays), minus absents
+      payableDays = fullDays + halfDays * 0.5 + sundaysCount + holidays;
+      payable = Math.round(payableDays * dailyRate);
     } else {
-      payable = Math.round(fullDays * emp.defaultRate + halfDays * emp.defaultRate * 0.5);
+      // Temporary staff: Paid strictly for attended working days
+      payableDays = fullDays + halfDays * 0.5;
+      payable = Math.round(payableDays * emp.defaultRate);
     }
 
-    return { fullDays, halfDays, absents, holidays, effectiveDays, payable, notJoinedYet, joinedThisMonth, startDate: emp.startDate };
+    const effectiveDays = payableDays;
+
+    return {
+      fullDays,
+      halfDays,
+      absents,
+      holidays,
+      sundaysCount,
+      upcomingDays,
+      preJoiningDays,
+      effectiveDays,
+      payableDays,
+      payable,
+      notJoinedYet,
+      joinedThisMonth,
+      startDate: emp.startDate,
+      dailyRate: Math.round(dailyRate),
+    };
   };
 
   // Helper to get effective payable amount (admin-edited override, saved DB amount, or auto-calculated amount)
@@ -900,8 +965,10 @@ export default function AttendancePage() {
                         if (current.status === 'full_day') dayEarned = emp.defaultRate;
                         else if (current.status === 'half_day') dayEarned = Math.round(emp.defaultRate * 0.5);
                       } else {
-                        if (current.status === 'full_day') dayEarned = Math.round(emp.defaultRate / 26);
-                        else if (current.status === 'half_day') dayEarned = Math.round((emp.defaultRate / 26) * 0.5);
+                        const selDateObj = new Date(selectedDate);
+                        const daysInSelMonth = new Date(selDateObj.getFullYear(), selDateObj.getMonth() + 1, 0).getDate();
+                        if (current.status === 'full_day') dayEarned = Math.round(emp.defaultRate / daysInSelMonth);
+                        else if (current.status === 'half_day') dayEarned = Math.round((emp.defaultRate / daysInSelMonth) * 0.5);
                       }
                     }
 
@@ -1345,9 +1412,18 @@ export default function AttendancePage() {
                             {stats.absents}
                           </td>
 
-                          {/* Effective Days */}
+                          {/* Payable Days */}
                           <td className="py-3.5 px-4 text-center font-mono font-bold text-slate-900 bg-slate-50/60">
-                            {stats.effectiveDays}
+                            <div>{stats.payableDays}</div>
+                            {stats.upcomingDays > 0 ? (
+                              <span className="block text-[9px] text-slate-400 font-sans font-normal">
+                                (till today &bull; {stats.upcomingDays} upcoming)
+                              </span>
+                            ) : (
+                              <span className="block text-[9px] text-slate-400 font-sans font-normal">
+                                (full month)
+                              </span>
+                            )}
                           </td>
 
                           {/* Calculated Payable (Editable on Edit Click) */}
@@ -1446,6 +1522,10 @@ export default function AttendancePage() {
                                   ) : stats.joinedThisMonth ? (
                                     <span className="font-semibold text-amber-600">
                                       Pro-rated from start date
+                                    </span>
+                                  ) : stats.upcomingDays > 0 ? (
+                                    <span className="text-slate-500 font-medium">
+                                      Calculated till today ({stats.payableDays} of {stats.payableDays + stats.absents} elapsed)
                                     </span>
                                   ) : (
                                     <span className="text-slate-400 font-medium">
