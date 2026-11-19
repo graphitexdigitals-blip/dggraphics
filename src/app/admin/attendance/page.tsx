@@ -1630,6 +1630,14 @@ export default function AttendancePage() {
         const calStats = getMonthlyStatsForEmployee(calEmp);
         const isPerm = calEmp.paymentType === 'fixed_salary';
 
+        // Check if salary for this selected month and employee has been paid
+        const currentMonthSalaryPayment = (allSalaryPayments.length > 0 ? allSalaryPayments : salaryPayments).find(
+          (p) => p.labourId === calEmp.id && p.month === `${selectedYear}-${selectedMonth}`
+        );
+        const isMonthPaid = currentMonthSalaryPayment?.status === 'Paid';
+        const paymentPaidAt = currentMonthSalaryPayment?.paidAt ? currentMonthSalaryPayment.paidAt.split('T')[0] : '';
+        const paidAmount = currentMonthSalaryPayment?.amount ?? calStats.payable;
+
         // Count Sundays
         let sundaysCount = 0;
         for (let d = 1; d <= daysInMonth; d++) {
@@ -1885,10 +1893,85 @@ export default function AttendancePage() {
 
               {/* Grid of Days */}
               <div className="grid grid-cols-7 gap-1.5 sm:gap-2 pt-1">
-                {/* Blank padding cells before 1st of month */}
-                {Array.from({ length: mondayOffset }).map((_, idx) => (
-                  <div key={`blank-${idx}`} className="min-h-[90px] sm:min-h-[105px] bg-slate-50/50 rounded-xl border border-dashed border-slate-200/60 p-2" />
-                ))}
+                {/* Blank padding cells before 1st of month: Displays Paid Status & Covered Dates in Top Blank Space */}
+                {mondayOffset > 0 && (
+                  <div
+                    style={{ gridColumn: `span ${mondayOffset} / span ${mondayOffset}` }}
+                    className={`min-h-[90px] sm:min-h-[105px] rounded-xl border p-3 flex flex-col justify-between shadow-xs transition ${
+                      isMonthPaid
+                        ? 'bg-gradient-to-br from-emerald-50 via-teal-50 to-emerald-100/90 border-emerald-300'
+                        : 'bg-gradient-to-br from-amber-50 via-orange-50 to-amber-100/90 border-amber-300'
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-center gap-2.5">
+                        <div
+                          className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 shadow-xs ${
+                            isMonthPaid ? 'bg-emerald-600 text-white' : 'bg-amber-500 text-white'
+                          }`}
+                        >
+                          {isMonthPaid ? <CheckCircle2 className="w-5 h-5" /> : <Clock className="w-5 h-5 animate-pulse" />}
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <span
+                              className={`text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full ${
+                                isMonthPaid ? 'bg-emerald-200 text-emerald-900 border border-emerald-300' : 'bg-amber-200 text-amber-900 border border-amber-300'
+                              }`}
+                            >
+                              {isMonthPaid ? '✓ SALARY PAID' : '⏳ PAYMENT DUE'}
+                            </span>
+                            <span className="text-sm font-black text-slate-900">
+                              ₹{paidAmount.toLocaleString('en-IN')}
+                            </span>
+                          </div>
+                          <div className="text-xs font-bold text-slate-800 mt-0.5">
+                            {monthTitle} &bull; {calEmp.name}
+                          </div>
+                        </div>
+                      </div>
+
+                      {isMonthPaid ? (
+                        <span className="text-[10px] bg-emerald-600 text-white font-black px-2.5 py-0.5 rounded-md uppercase tracking-wider shadow-2xs">
+                          Settled
+                        </span>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            handleSavePaymentStatus(calEmp, calStats.payable, `${selectedYear}-${selectedMonth}`, 'Paid')
+                          }
+                          className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-md text-[11px] font-bold shadow-2xs transition flex items-center gap-1 cursor-pointer"
+                        >
+                          <Check className="w-3.5 h-3.5" />
+                          <span>Pay Now ✓</span>
+                        </button>
+                      )}
+                    </div>
+
+                    <div className="pt-2 border-t border-slate-200/80 text-[11px] space-y-0.5 text-slate-700">
+                      <div className="flex flex-wrap items-center justify-between gap-1">
+                        <span className="text-slate-500 font-medium">Dates Paid & Covered:</span>
+                        <strong className="text-slate-900">
+                          1st to {Math.min(daysInMonth, new Date().getDate())} {monthNames[monthNum - 1]} ({calStats.payableDays} days)
+                        </strong>
+                      </div>
+                      {isMonthPaid ? (
+                        <div className="flex flex-wrap items-center justify-between gap-1">
+                          <span className="text-slate-500 font-medium">Payment Disbursed:</span>
+                          <strong className="text-emerald-900 font-semibold">
+                            {paymentPaidAt || selectedDate} via {currentMonthSalaryPayment?.paymentMethod || 'Cash'}
+                          </strong>
+                        </div>
+                      ) : (
+                        <div className="flex flex-wrap items-center justify-between gap-1">
+                          <span className="text-slate-500 font-medium">Status:</span>
+                          <span className="text-amber-800 font-bold">Unpaid till today</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
 
                 {/* Day cells 1 .. daysInMonth */}
                 {Array.from({ length: daysInMonth }).map((_, idx) => {
@@ -1991,6 +2074,11 @@ export default function AttendancePage() {
                           {isToday && (
                             <span className="px-1 py-0.2 rounded text-[8px] font-black bg-blue-600 text-white uppercase tracking-wider shadow-xs">
                               Today
+                            </span>
+                          )}
+                          {isMonthPaid && !isFuture && !isBeforeJoining && currentDayStatus !== 'absent' && (
+                            <span className="px-1.5 py-0.2 rounded text-[8px] font-extrabold bg-emerald-100 text-emerald-800 border border-emerald-300">
+                              ✓ Paid
                             </span>
                           )}
                         </div>
