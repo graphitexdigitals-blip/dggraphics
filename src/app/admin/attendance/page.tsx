@@ -28,6 +28,7 @@ import {
   History,
   Wallet,
   ArrowLeft,
+  Edit2,
 } from 'lucide-react';
 
 export default function AttendancePage() {
@@ -58,13 +59,39 @@ export default function AttendancePage() {
   );
   const [monthlyFilterType, setMonthlyFilterType] = useState<'all' | 'permanent' | 'temporary'>('all');
 
-  // Add Employee Modal
+  // Add & Edit Employee Modal
   const [addEmployeeOpen, setAddEmployeeOpen] = useState(false);
+  const [editingEmployee, setEditingEmployee] = useState<Labour | null>(null);
   const [empName, setEmpName] = useState('');
   const [empPhone, setEmpPhone] = useState('');
   const [empRole, setEmpRole] = useState('Printer Operator');
   const [empType, setEmpType] = useState<'permanent' | 'temporary'>('permanent');
   const [empRate, setEmpRate] = useState<number>(20000); // 20000/mo for perm, or 700/day for temp
+  const [empStartDate, setEmpStartDate] = useState<string>(
+    new Date().toISOString().split('T')[0]
+  );
+
+  const openAddEmployee = () => {
+    setEditingEmployee(null);
+    setEmpName('');
+    setEmpPhone('');
+    setEmpRole('Printer Operator');
+    setEmpType('permanent');
+    setEmpRate(20000);
+    setEmpStartDate(new Date().toISOString().split('T')[0]);
+    setAddEmployeeOpen(true);
+  };
+
+  const openEditEmployee = (emp: Labour) => {
+    setEditingEmployee(emp);
+    setEmpName(emp.name);
+    setEmpPhone(emp.phone);
+    setEmpRole(emp.workType);
+    setEmpType(emp.paymentType === 'fixed_salary' ? 'permanent' : 'temporary');
+    setEmpRate(emp.defaultRate);
+    setEmpStartDate(emp.startDate || new Date().toISOString().split('T')[0]);
+    setAddEmployeeOpen(true);
+  };
 
   // Pay Wage / Salary Modal
   const [payModalOpen, setPayModalOpen] = useState(false);
@@ -237,21 +264,24 @@ export default function AttendancePage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           action: 'save_employee',
+          id: editingEmployee?.id,
           name: empName.trim(),
           phone: empPhone.trim(),
           workType: empRole,
           paymentType: empType === 'permanent' ? 'fixed_salary' : 'per_job',
           defaultRate: Number(empRate),
+          startDate: empStartDate,
         }),
       });
       const data = await res.json();
       if (data.success) {
         setAddEmployeeOpen(false);
+        setEditingEmployee(null);
         setEmpName('');
         setEmpPhone('');
         loadData();
       } else {
-        alert('Failed to create employee: ' + (data.error || 'Server error'));
+        alert('Failed to save employee: ' + (data.error || 'Server error'));
       }
     } catch (err: any) {
       alert('Error: ' + err.message);
@@ -376,23 +406,58 @@ export default function AttendancePage() {
     const holidays = empRecords.filter((a) => a.status === 'holiday').length;
     const effectiveDays = fullDays + halfDays * 0.5;
 
+    // Check employee start date relative to the target month
+    const [targetYear, targetMonthNum] = prefix.split('-').map(Number);
+    const startDate = emp.startDate || '2026-01-01';
+    const [startYear, startMonthNum, startDayNum] = startDate.split('-').map(Number);
+
+    let notJoinedYet = false;
+    let joinedThisMonth = false;
     let payable = 0;
+
+    // 1. If target month is prior to employee start date
+    if (targetYear < startYear || (targetYear === startYear && targetMonthNum < startMonthNum)) {
+      notJoinedYet = true;
+      payable = 0;
+      return { fullDays: 0, halfDays: 0, absents: 0, holidays: 0, effectiveDays: 0, payable: 0, notJoinedYet, joinedThisMonth, startDate: emp.startDate };
+    }
+
+    // 2. If target month is the joining month
+    if (targetYear === startYear && targetMonthNum === startMonthNum) {
+      joinedThisMonth = true;
+      const daysInMonth = new Date(targetYear, targetMonthNum, 0).getDate();
+      const daysEmployed = Math.max(1, daysInMonth - startDayNum + 1);
+
+      if (emp.paymentType === 'fixed_salary') {
+        const dailyRateCalc = emp.defaultRate / 26;
+        if (empRecords.length === 0) {
+          // Prorate by days active in start month
+          payable = Math.round(emp.defaultRate * (daysEmployed / daysInMonth));
+        } else {
+          const maxProrated = Math.round(emp.defaultRate * (daysEmployed / daysInMonth));
+          payable = Math.round(Math.min(maxProrated, effectiveDays * dailyRateCalc));
+        }
+      } else {
+        payable = Math.round(fullDays * emp.defaultRate + halfDays * emp.defaultRate * 0.5);
+      }
+
+      return { fullDays, halfDays, absents, holidays, effectiveDays, payable, notJoinedYet, joinedThisMonth, startDate: emp.startDate };
+    }
+
+    // 3. Normal active month
     if (emp.paymentType === 'fixed_salary') {
-      // Standard 26 working days calculation
       const workingDaysInMonth = 26;
       if (empRecords.length === 0) {
         payable = emp.defaultRate; // Default to full month salary if not marked yet
       } else {
-        // Full salary minus unpaid absences
         const dailyRateCalc = emp.defaultRate / workingDaysInMonth;
         payable = Math.round(Math.min(emp.defaultRate, effectiveDays * dailyRateCalc));
       }
     } else {
-      // Temporary employee (according to work / daily rate)
       payable = Math.round(fullDays * emp.defaultRate + halfDays * emp.defaultRate * 0.5);
     }
 
-    return { fullDays, halfDays, absents, holidays, effectiveDays, payable };
+    return { fullDays, halfDays, absents, holidays, effectiveDays, payable, notJoinedYet, joinedThisMonth, startDate: emp.startDate };
   };
 
   // Month-wide aggregated payroll & payout metrics
@@ -481,11 +546,7 @@ export default function AttendancePage() {
         </div>
 
         <button
-          onClick={() => {
-            setEmpType('permanent');
-            setEmpRate(20000);
-            setAddEmployeeOpen(true);
-          }}
+          onClick={openAddEmployee}
           className="inline-flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-md text-xs font-medium shadow-xs transition shrink-0"
         >
           <PlusCircle className="w-3.5 h-3.5" />
@@ -956,8 +1017,23 @@ export default function AttendancePage() {
                         <tr key={emp.id} className="hover:bg-slate-50/80 transition">
                           {/* Name & Role */}
                           <td className="py-3.5 px-4 whitespace-nowrap">
-                            <div className="font-bold text-slate-900 text-xs">{emp.name}</div>
+                            <div className="flex items-center gap-1.5">
+                              <span className="font-bold text-slate-900 text-xs">{emp.name}</span>
+                              <button
+                                type="button"
+                                onClick={() => openEditEmployee(emp)}
+                                className="text-slate-400 hover:text-blue-600 transition p-0.5"
+                                title="Edit employee & start date"
+                              >
+                                <Edit2 className="w-3 h-3" />
+                              </button>
+                            </div>
                             <div className="text-[10px] text-slate-400 font-semibold">{emp.workType}</div>
+                            {emp.startDate && (
+                              <div className="text-[10px] text-slate-500 font-medium">
+                                Starts: <span className="font-semibold text-slate-700">{emp.startDate}</span>
+                              </div>
+                            )}
                           </td>
 
                           {/* Category */}
@@ -1006,52 +1082,70 @@ export default function AttendancePage() {
                           {/* Calculated Payable */}
                           <td className="py-3.5 px-4 text-right whitespace-nowrap font-black text-sm text-slate-900">
                             ₹{stats.payable.toLocaleString('en-IN')}
+                            {stats.notJoinedYet && (
+                              <div className="text-[10px] font-semibold text-slate-400">
+                                Not Employed Yet
+                              </div>
+                            )}
+                            {stats.joinedThisMonth && (
+                              <div className="text-[10px] font-semibold text-amber-600">
+                                Pro-rated from start date
+                              </div>
+                            )}
                           </td>
 
                           {/* Action: Paid / Pending Dropdown & Save Button */}
                           <td className="py-3.5 px-4 text-right whitespace-nowrap">
-                            <div className="flex items-center justify-end gap-1.5">
-                              <select
-                                value={currentStatus}
-                                onChange={(e) => {
-                                  const newStatus = e.target.value as 'Paid' | 'Pending';
-                                  setPaymentStatuses((prev) => ({
-                                    ...prev,
-                                    [emp.id]: newStatus,
-                                  }));
-                                }}
-                                className={`px-2.5 py-1 text-xs font-medium border rounded-md transition focus:outline-none cursor-pointer ${
-                                  currentStatus === 'Paid'
-                                    ? 'bg-emerald-50 text-emerald-800 border-emerald-300'
-                                    : 'bg-amber-50 text-amber-800 border-amber-300'
-                                }`}
-                              >
-                                <option value="Paid">✓ Paid</option>
-                                <option value="Pending">⏳ Pending</option>
-                              </select>
+                            {stats.notJoinedYet ? (
+                              <div className="flex items-center justify-end">
+                                <span className="px-2.5 py-1 text-[10px] font-medium rounded-md bg-slate-100 text-slate-400 border border-slate-200">
+                                  Starts {emp.startDate || 'later'}
+                                </span>
+                              </div>
+                            ) : (
+                              <div className="flex items-center justify-end gap-1.5">
+                                <select
+                                  value={currentStatus}
+                                  onChange={(e) => {
+                                    const newStatus = e.target.value as 'Paid' | 'Pending';
+                                    setPaymentStatuses((prev) => ({
+                                      ...prev,
+                                      [emp.id]: newStatus,
+                                    }));
+                                  }}
+                                  className={`px-2.5 py-1 text-xs font-medium border rounded-md transition focus:outline-none cursor-pointer ${
+                                    currentStatus === 'Paid'
+                                      ? 'bg-emerald-50 text-emerald-800 border-emerald-300'
+                                      : 'bg-amber-50 text-amber-800 border-amber-300'
+                                  }`}
+                                >
+                                  <option value="Paid">✓ Paid</option>
+                                  <option value="Pending">⏳ Pending</option>
+                                </select>
 
-                              <button
-                                type="button"
-                                disabled={savingPaymentId === saveKey}
-                                onClick={() => handleSavePaymentStatus(emp, stats.payable)}
-                                className={`px-3 py-1 rounded-md font-medium text-xs shadow-xs transition flex items-center gap-1 ${
-                                  savedPaymentSuccessId === saveKey
-                                    ? 'bg-emerald-600 text-white'
-                                    : 'bg-blue-600 hover:bg-blue-700 text-white'
-                                }`}
-                              >
-                                {savingPaymentId === saveKey ? (
-                                  <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                                ) : savedPaymentSuccessId === saveKey ? (
-                                  <>
-                                    <Check className="w-3.5 h-3.5" />
-                                    <span>Saved</span>
-                                  </>
-                                ) : (
-                                  <span>Save</span>
-                                )}
-                              </button>
-                            </div>
+                                <button
+                                  type="button"
+                                  disabled={savingPaymentId === saveKey}
+                                  onClick={() => handleSavePaymentStatus(emp, stats.payable)}
+                                  className={`px-3 py-1 rounded-md font-medium text-xs shadow-xs transition flex items-center gap-1 ${
+                                    savedPaymentSuccessId === saveKey
+                                      ? 'bg-emerald-600 text-white'
+                                      : 'bg-blue-600 hover:bg-blue-700 text-white'
+                                  }`}
+                                >
+                                  {savingPaymentId === saveKey ? (
+                                    <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                  ) : savedPaymentSuccessId === saveKey ? (
+                                    <>
+                                      <Check className="w-3.5 h-3.5" />
+                                      <span>Saved</span>
+                                    </>
+                                  ) : (
+                                    <span>Save</span>
+                                  )}
+                                </button>
+                              </div>
+                            )}
                           </td>
                         </tr>
                       );
@@ -1409,11 +1503,7 @@ export default function AttendancePage() {
                     (p) => p.labourId === emp.id && p.month === m.id
                   );
                   const isCurrent = m.id === `${selectedYear}-${selectedMonth}`;
-                  const calAmount = isCurrent
-                    ? getMonthlyStatsForEmployee(emp, m.id).payable
-                    : isPerm
-                    ? emp.defaultRate
-                    : 0;
+                  const calAmount = getMonthlyStatsForEmployee(emp, m.id).payable;
 
                   const payAmt = pRec ? pRec.amount : calAmount;
                   lifetimeEarnings += payAmt;
@@ -1546,11 +1636,7 @@ export default function AttendancePage() {
                               const mStats = getMonthlyStatsForEmployee(emp, m.id);
                               const calAmount = pRec
                                 ? pRec.amount
-                                : isCurrent
-                                ? mStats.payable
-                                : isPerm
-                                ? emp.defaultRate
-                                : 0;
+                                : mStats.payable;
 
                               const isPaid = pRec
                                 ? pRec.status === 'Paid'
@@ -1687,26 +1773,25 @@ export default function AttendancePage() {
               Registered Studio Workforce ({employees.length})
             </span>
             <button
-              onClick={() => {
-                setEmpType('permanent');
-                setEmpRate(20000);
-                setAddEmployeeOpen(true);
-              }}
-              className="text-xs font-bold text-dp-orange hover:underline flex items-center gap-1"
+              onClick={openAddEmployee}
+              className="text-xs font-bold text-blue-600 hover:text-blue-800 hover:underline flex items-center gap-1"
             >
-              Add Staff Member
+              <PlusCircle className="w-3.5 h-3.5" />
+              <span>Add Staff Member</span>
             </button>
           </div>
 
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs min-w-[750px]">
+            <table className="w-full text-left text-xs min-w-[850px]">
               <thead className="bg-slate-50 text-slate-500 uppercase tracking-wider font-semibold border-b border-slate-200">
                 <tr>
                   <th className="py-3.5 px-4">Staff Name</th>
                   <th className="py-3.5 px-4">Designation / Role</th>
                   <th className="py-3.5 px-4">Contact</th>
+                  <th className="py-3.5 px-4">Joining / Start Date</th>
                   <th className="py-3.5 px-4">Employment Classification</th>
                   <th className="py-3.5 px-4 text-right">Base Salary / Rate</th>
+                  <th className="py-3.5 px-4 text-right">Action</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -1719,6 +1804,16 @@ export default function AttendancePage() {
                       </td>
                       <td className="py-3.5 px-4 text-slate-600">{emp.workType}</td>
                       <td className="py-3.5 px-4 text-slate-600">{emp.phone}</td>
+                      <td className="py-3.5 px-4 whitespace-nowrap text-slate-700 font-medium">
+                        {emp.startDate ? (
+                          <span className="inline-flex items-center gap-1 font-semibold text-slate-800">
+                            <Calendar className="w-3 h-3 text-slate-400" />
+                            {emp.startDate}
+                          </span>
+                        ) : (
+                          <span className="text-slate-400 italic">Not set</span>
+                        )}
+                      </td>
                       <td className="py-3.5 px-4 whitespace-nowrap">
                         <span
                           className={`px-2.5 py-0.5 rounded text-[10px] font-bold ${
@@ -1736,6 +1831,16 @@ export default function AttendancePage() {
                           {isPerm ? '/ month' : '/ day'}
                         </span>
                       </td>
+                      <td className="py-3.5 px-4 text-right whitespace-nowrap">
+                        <button
+                          type="button"
+                          onClick={() => openEditEmployee(emp)}
+                          className="inline-flex items-center gap-1 text-xs font-semibold text-blue-600 hover:text-blue-800 hover:underline px-2 py-1 rounded"
+                        >
+                          <Edit2 className="w-3 h-3" />
+                          <span>Edit</span>
+                        </button>
+                      </td>
                     </tr>
                   );
                 })}
@@ -1752,8 +1857,16 @@ export default function AttendancePage() {
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
           <div className="bg-white rounded-3xl max-w-md w-full p-5 sm:p-6 space-y-4 shadow-2xl animate-fadeIn text-xs">
             <div className="flex justify-between items-center pb-2 border-b border-slate-100">
-              <h3 className="font-extrabold text-base text-dp-navy">Add Studio Employee</h3>
-              <button onClick={() => setAddEmployeeOpen(false)} className="text-slate-400 hover:text-slate-600 p-1">
+              <h3 className="font-extrabold text-base text-dp-navy">
+                {editingEmployee ? 'Edit Studio Employee & Start Date' : 'Add Studio Employee'}
+              </h3>
+              <button
+                onClick={() => {
+                  setAddEmployeeOpen(false);
+                  setEditingEmployee(null);
+                }}
+                className="text-slate-400 hover:text-slate-600 p-1"
+              >
                 <X className="w-5 h-5" />
               </button>
             </div>
@@ -1771,6 +1884,22 @@ export default function AttendancePage() {
                   placeholder="e.g. Ramesh Gowda"
                   className="w-full px-3 py-2 border border-slate-200 rounded-xl"
                 />
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 uppercase text-[10px] mb-1">
+                  Employee Start / Joining Date *
+                </label>
+                <input
+                  type="date"
+                  required
+                  value={empStartDate}
+                  onChange={(e) => setEmpStartDate(e.target.value)}
+                  className="w-full px-3 py-2 border border-slate-200 rounded-xl font-bold text-slate-900 bg-white"
+                />
+                <p className="text-[10px] text-slate-400 mt-0.5">
+                  Salaries and payroll will start calculating from this joining date onwards.
+                </p>
               </div>
 
               <div>
@@ -1862,16 +1991,19 @@ export default function AttendancePage() {
               <div className="pt-2 flex justify-end gap-2 border-t border-slate-100">
                 <button
                   type="button"
-                  onClick={() => setAddEmployeeOpen(false)}
+                  onClick={() => {
+                    setAddEmployeeOpen(false);
+                    setEditingEmployee(null);
+                  }}
                   className="px-3.5 py-1.5 text-slate-600 rounded-xl"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-dp-navy text-white rounded-xl font-bold shadow-xs hover:bg-dp-orange transition"
+                  className="px-4 py-2 bg-blue-600 text-white rounded-xl font-bold shadow-xs hover:bg-blue-700 transition"
                 >
-                  Save Employee
+                  {editingEmployee ? 'Update Employee' : 'Save Employee'}
                 </button>
               </div>
             </form>

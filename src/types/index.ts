@@ -243,6 +243,7 @@ export interface Labour {
   workType: string; // 'Designer', 'Printer Operator', 'Finishing & Fabrication', 'Installer'
   paymentType: 'fixed_salary' | 'per_job' | 'per_unit';
   defaultRate: number;
+  startDate?: string; // YYYY-MM-DD joining / start date
   totalEarnings: number;
   totalPaid: number;
   pendingAmount: number;

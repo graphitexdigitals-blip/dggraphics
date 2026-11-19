@@ -90,7 +90,7 @@ export async function POST(req: Request) {
 
     // Action 2: Add or Edit Employee
     if (body.action === 'save_employee') {
-      const { id, name, phone, workType, paymentType, defaultRate } = body;
+      const { id, name, phone, workType, paymentType, defaultRate, startDate } = body;
       if (!name || !phone) {
         return NextResponse.json({ success: false, error: 'Name and phone are required' }, { status: 400 });
       }
@@ -102,6 +102,7 @@ export async function POST(req: Request) {
         workType: workType || 'Production Operator',
         paymentType: paymentType === 'fixed_salary' ? 'fixed_salary' : 'per_job',
         defaultRate: Number(defaultRate) || 0,
+        startDate: startDate || (id ? undefined : new Date().toISOString().split('T')[0]),
         totalEarnings: 0,
         totalPaid: 0,
         pendingAmount: 0,

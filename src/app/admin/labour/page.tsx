@@ -18,6 +18,7 @@ export default function AdminLabourPage() {
   const [workType, setWorkType] = useState('Machine Operator');
   const [paymentType, setPaymentType] = useState<'fixed_salary' | 'per_job' | 'per_unit'>('per_job');
   const [defaultRate, setDefaultRate] = useState<number>(250);
+  const [startDate, setStartDate] = useState(new Date().toISOString().split('T')[0]);
 
   // Assign Labour to Job Form
   const [assignJobNumber, setAssignJobNumber] = useState('');
@@ -63,6 +64,7 @@ export default function AdminLabourPage() {
           workType,
           paymentType,
           defaultRate: Number(defaultRate),
+          startDate,
         }),
       });
       const data = await res.json();
@@ -224,6 +226,17 @@ export default function AdminLabourPage() {
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
                   className="w-full px-3 py-2 border border-slate-200 rounded-lg"
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 uppercase mb-1">Employee Start / Joining Date *</label>
+                <input
+                  type="date"
+                  required
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                  className="w-full px-3 py-2 border border-slate-200 rounded-lg font-bold"
                 />
               </div>
 

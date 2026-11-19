@@ -598,7 +598,11 @@ export const db = {
     const data = ensureDatabase();
     const idx = data.labour.findIndex((l) => l.id === labour.id);
     if (idx >= 0) {
-      data.labour[idx] = labour;
+      data.labour[idx] = {
+        ...data.labour[idx],
+        ...labour,
+      };
+      labour = data.labour[idx];
     } else {
       data.labour.push(labour);
     }

@@ -65,6 +65,7 @@ export async function POST(req: Request) {
       workType: body.workType || 'Production Operator',
       paymentType: body.paymentType || 'per_job',
       defaultRate: Number(body.defaultRate) || 0,
+      startDate: body.startDate || (body.id ? undefined : new Date().toISOString().split('T')[0]),
       totalEarnings: Number(body.totalEarnings) || 0,
       totalPaid: Number(body.totalPaid) || 0,
       pendingAmount: Number(body.pendingAmount) || 0,

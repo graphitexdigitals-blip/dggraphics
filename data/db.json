@@ -483,7 +483,21 @@
   "vendorWorkOrders": [],
   "materials": [],
   "materialConsumptions": [],
-  "labour": [],
+  "labour": [
+    {
+      "id": "emp-1795097201466",
+      "name": "racchu",
+      "phone": "9483032949",
+      "workType": "Printer Operator",
+      "paymentType": "fixed_salary",
+      "defaultRate": 15000,
+      "startDate": "2026-11-01",
+      "totalEarnings": 0,
+      "totalPaid": 0,
+      "pendingAmount": 0,
+      "isActive": true
+    }
+  ],
   "labourTransactions": [],
   "invoices": [],
   "payments": [],
